@@ -1,0 +1,29 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/golang:1.12.7
+
+    working_directory: /go/src/github.com/cryptogarageinc/p2pderivatives-server
+    environment:
+     ARTIFACTS: /tmp/artifacts
+    steps:
+      - checkout
+      - run:
+         name: Create artifact folder
+         command: |
+          mkdir -p $ARTIFACTS
+          echo "Created folder $ARTIFACTS"
+      - run: go get github.com/jstemmer/go-junit-report
+      - run:
+         name: Run unit tests
+         command: |
+          go test -coverprofile=coverage.out -v ./... > unit_tests.out
+          go tool cover -html=coverage.out -o coverage.html
+          mv coverage.html $ARTIFACTS/coverage.html
+          cat unit_tests.out | go-junit-report > $ARTIFACTS/unit_tests.xml
+      - store_artifacts:
+         path: /tmp/artifacts
+         destination: raw-test-output
+      - store_test_results:
+         path: /tmp/artifacts
