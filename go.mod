@@ -3,6 +3,9 @@ module p2pderivatives-server
 go 1.12
 
 require (
+	bou.ke/monkey v1.0.1 // indirect
+	github.com/bouk/monkey v1.0.1
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/fastly/go-utils v0.0.0-20180712184237-d95a45783239 // indirect
 	github.com/go-playground/universal-translator v0.17.0 // indirect
 	github.com/golang/protobuf v1.3.2
