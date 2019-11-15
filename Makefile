@@ -12,6 +12,10 @@ gen-proto:
 	protoc -I./internal/user -I./api/proto -I${GOPATH}/src -I${GOPATH}/src/github.com/mwitkow/go-proto-validators -I/usr/local/include \
 		--go_out=plugins=grpc:./internal/user/usercontroller user.proto \
 		--govalidators_out=gogoimport=true:./internal/user/usercontroller user.proto
+	#authentication/*.proto
+	protoc -I./internal/authentication -I./api/proto -I${GOPATH}/src -I${GOPATH}/src/github.com/mwitkow/go-proto-validators -I/usr/local/include \
+		--go_out=plugins=grpc:./internal/authentication authentication.proto \
+		--govalidators_out=gogoimport=true:./internal/authentication authentication.proto
 	#test/*.proto
 	protoc -I./test -I./api/proto -I${GOPATH}/src -I${GOPATH}/src/github.com/mwitkow/go-proto-validators -I/usr/local/include \
 		--go_out=plugins=grpc:./test test.proto
