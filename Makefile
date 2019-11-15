@@ -1,3 +1,15 @@
+setup: install gen-proto deps gen-mock
+	echo "setup done"
+
+install:
+	GO111MODULE=off go get -u github.com/golang/protobuf/protoc-gen-go
+	GO111MODULE=off go get -u github.com/mwitkow/go-proto-validators/protoc-gen-govalidators
+	GO111MODULE=off go get -u github.com/golang/mock/gomock
+	GO111MODULE=on go get -u github.com/golang/mock/mockgen
+
+deps:
+	go mod tidy; go mod vendor
+
 gen:
 	@make gen-proto
 	@make gen-mock
@@ -23,3 +35,25 @@ gen-proto:
 gen-mock:
 	mockgen -destination test/mocks/mock_usercontroller/mock_controller.go  p2pderivatives-server/internal/user/usercontroller User_GetUserStatusesServer,User_GetUserListServer
 	mockgen -destination test/mocks/mock_usercommon/mock_service.go  p2pderivatives-server/internal/user/usercommon ServiceIf
+
+client:
+	mkdir -p bin
+	go build -o ./bin/p2pdclient ./cmd/p2pdcli/p2pdcli.go
+
+server:
+	mkdir -p bin
+	go build -o ./bin/server ./cmd/p2pdserver/server.go
+
+bin:
+	@make client
+	@make server
+
+run-server-local:
+	@make server
+	./bin/server -config ./test/config -appname p2pd -e integration -migrate
+
+test-local:
+	go test ./...
+
+help:
+	@make2help $(MAKEFILE_LIST)
