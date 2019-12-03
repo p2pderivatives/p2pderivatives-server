@@ -1,5 +1,5 @@
 server:
-  address: "localhost:8080"
+  address: "0.0.0.0:8080"
 log:
   dir: _log
   output_stdout: true

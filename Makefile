@@ -52,6 +52,12 @@ run-server-local:
 	@make server
 	./bin/server -config ./test/config -appname p2pd -e integration -migrate
 
+docker:
+	docker build -t docker.pkg.github.com/cryptogarageinc/p2pderivatives-server/server .
+
+run-docker:
+	docker run -p 8080:8080 docker.pkg.github.com/cryptogarageinc/p2pderivatives-server/server
+
 test-local:
 	go test ./...
 
