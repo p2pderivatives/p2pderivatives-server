@@ -2,3 +2,15 @@
 
 # p2pderivatives-server
 Repository for the P2PDerivatives server
+
+## Requirements
+Confirmed working with Go v1.12.7.
+To install protoc, use the script in `scripts/install_protoc.sh`.
+
+## Getting started
+
+Run `make setup` to setup the repository.
+Once that is done, the server can be run locally using `make run-local-server`.
+A cli client tool can be used to interact with the server.
+Build it using `make client`.
+Then run `./bin/p2pdclient` to see the list of available commands.

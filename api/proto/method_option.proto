@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package pbbase;
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.MethodOptions {
+  OptionBase option_base = 50001;
+}
+
+message OptionBase {
+  bool ignore_token_verify = 1;
+  TxOption tx_option = 2;
+}
+
+enum TxOption {
+  ReadWrite = 0;
+  ReadOnly = 1;
+  NoTx = 2;
+}

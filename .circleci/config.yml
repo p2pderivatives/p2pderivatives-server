@@ -3,8 +3,6 @@ jobs:
   build:
     docker:
       - image: circleci/golang:1.12.7
-
-    working_directory: /go/src/github.com/cryptogarageinc/p2pderivatives-server
     environment:
      ARTIFACTS: /tmp/artifacts
     steps:
@@ -18,10 +16,18 @@ jobs:
       - run:
          name: Run unit tests
          command: |
+          ./scripts/install_protoc.sh
+          go mod vendor
+          make install
+          make gen
           go test -coverprofile=coverage.out -v ./... > unit_tests.out
           go tool cover -html=coverage.out -o coverage.html
           mv coverage.html $ARTIFACTS/coverage.html
           cat unit_tests.out | go-junit-report > $ARTIFACTS/unit_tests.xml
+          mkdir -p tmp
+          make -B run-server-local &
+          sleep 5
+          go test -tags=integration_test ./test/integration/integration_test.go
       - store_artifacts:
          path: /tmp/artifacts
          destination: raw-test-output
