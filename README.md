@@ -9,6 +9,10 @@ To install protoc, use the script in `scripts/install_protoc.sh`.
 
 ## Getting started
 
+The protobuf files are included as submodules.
+When cloning the repository, use `git clone --recursive <url>` to clone the submodule as well.
+Alternatively, run `git submodule update --init --recursive` within the repository root folder.
+
 Run `make setup` to setup the repository.
 Once that is done, the server can be run locally using `make run-local-server`.
 A cli client tool can be used to interact with the server.
