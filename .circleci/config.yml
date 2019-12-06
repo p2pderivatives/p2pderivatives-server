@@ -12,6 +12,7 @@ jobs:
          command: |
           mkdir -p $ARTIFACTS
           echo "Created folder $ARTIFACTS"
+          git submodule update --init --recursive
       - run: go get github.com/jstemmer/go-junit-report
       - run:
          name: Run unit tests
