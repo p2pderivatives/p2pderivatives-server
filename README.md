@@ -18,3 +18,23 @@ Once that is done, the server can be run locally using `make run-local-server`.
 A cli client tool can be used to interact with the server.
 Build it using `make client`.
 Then run `./bin/p2pdclient` to see the list of available commands.
+
+## Running using Docker
+
+### Building the image
+
+In the root of the repository:
+
+`docker build -t p2pd-server .`
+
+The name `p2pd-server` can be changed to any other docker compliant name.
+
+### Running the container
+
+Once built, you can start running the server:
+
+`docker run -p 8080:8080 p2pd-server`
+
+If your image name is different, please use the one specified before. 
+The port the internal server is mapped to can be specified by changing the initial number of the pair, e.g.: `-p 5000:8080` to map to local port 5000.
+To run the container in the background use the `-d` flag.
