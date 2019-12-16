@@ -6,7 +6,6 @@ import (
 	"p2pderivatives-server/internal/common/servererror"
 	"p2pderivatives-server/internal/user/usercommon"
 
-	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus/ctxlogrus"
 	"github.com/sirupsen/logrus"
 )
@@ -43,7 +42,6 @@ func (s *Controller) Login(
 			RefreshToken: userToken.RefreshToken,
 			ExpiresIn:    userToken.ExpiresIn,
 		},
-		ConnectionId:          uuid.New().String(),
 		RequireChangePassword: user.RequireChangePassword,
 	}, nil
 }
