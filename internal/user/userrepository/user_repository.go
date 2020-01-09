@@ -81,8 +81,8 @@ func (repo *Repository) FindUserByCondition(
 ) (result []usercommon.User, err error) {
 	tx := repo.extractTx(ctx)
 	filterCondition := &usercommon.User{
-		ID:      condition.ID,
-		Account: condition.Account,
+		ID:   condition.ID,
+		Name: condition.Name,
 	}
 	query := tx.Where(filterCondition)
 	if condition.Offset > 0 {

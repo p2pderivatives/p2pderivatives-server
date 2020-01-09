@@ -44,11 +44,10 @@ func (controller *Controller) Close() {
 func (controller *Controller) RegisterUser(
 	ctx context.Context,
 	request *UserRegisterRequest) (*UserRegisterResponse, error) {
-	userModel := usercommon.NewUser(request.Account, request.Name, request.Password)
+	userModel := usercommon.NewUser(request.Name, request.Password)
 
 	existingUser, err := controller.userService.FindFirstUser(ctx, &usercommon.User{
-		Name:    request.Name,
-		Account: request.Account,
+		Name: request.Name,
 	}, nil)
 
 	if existingUser != nil {
@@ -65,9 +64,8 @@ func (controller *Controller) RegisterUser(
 	controller.userStatusUpdater(userModel.Name, UserStatus_REGISTERED)
 
 	response := UserRegisterResponse{
-		Id:      createdUser.ID,
-		Account: createdUser.Account,
-		Name:    createdUser.Name,
+		Id:   createdUser.ID,
+		Name: createdUser.Name,
 	}
 
 	return &response, nil

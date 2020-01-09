@@ -58,11 +58,11 @@ func (s *Service) FindFirstUser(
 	return findUsers, nil
 }
 
-// FindFirstUserByAccount returns the first user associated with the given
-// accounts.
-func (s *Service) FindFirstUserByAccount(
-	ctx context.Context, account string) (*usercommon.User, error) {
-	findUsers, err := s.userRepository.FindFirstUser(ctx, usercommon.User{Account: account}, nil)
+// FindFirstUserByName returns the first user associated with the given
+// name.
+func (s *Service) FindFirstUserByName(
+	ctx context.Context, name string) (*usercommon.User, error) {
+	findUsers, err := s.userRepository.FindFirstUser(ctx, usercommon.User{Name: name}, nil)
 	if err != nil {
 		if !orm.IsRecordNotFoundError(err) {
 			return nil, s.CreateServiceError(ctx, servererror.DbError, "Failed to find User.", err)
@@ -77,8 +77,8 @@ func (s *Service) FindUsers(
 	ctx context.Context, user *usercommon.User, offset int,
 	limit int, orders []string) ([]usercommon.User, error) {
 	condition := usercommon.User{
-		ID:      user.ID,
-		Account: user.Account,
+		ID:   user.ID,
+		Name: user.Name,
 	}
 	findUser, err := s.userRepository.FindUsers(ctx, condition, offset, limit, orders)
 	if err != nil {
@@ -109,11 +109,11 @@ func (s *Service) UpdateUser(ctx context.Context, condition *usercommon.User) (*
 // ChangeUserPassword changes the user password and returns the new user
 func (s *Service) ChangeUserPassword(
 	ctx context.Context,
-	account string,
+	name string,
 	oldPassword string,
 	newPassword string,
 ) (*usercommon.User, error) {
-	targetUser, err := s.FindFirstUserByAccount(ctx, account)
+	targetUser, err := s.FindFirstUserByName(ctx, name)
 	if err != nil {
 		// Use the same message when returning different type of errors on
 		// password change.
@@ -134,7 +134,6 @@ func (s *Service) ChangeUserPassword(
 	hashedPasswordUser, err := s.createHashedPasswordUser(&usercommon.User{
 		ID:                    targetUser.ID,
 		Name:                  targetUser.Name,
-		Account:               targetUser.Account,
 		Password:              newPassword,
 		RequireChangePassword: false,
 		RefreshToken:          targetUser.RefreshToken,
@@ -154,10 +153,10 @@ func (s *Service) ChangeUserPassword(
 // account and return the reset user.
 func (s *Service) ResetUserPassword(
 	ctx context.Context,
-	account string,
+	name string,
 	newPassword string,
 ) (*usercommon.User, error) {
-	targetUser, err := s.FindFirstUserByAccount(ctx, account)
+	targetUser, err := s.FindFirstUserByName(ctx, name)
 	if err != nil {
 		return nil, s.CreateServiceError(ctx, servererror.NotFoundError, "Failed to find user", err)
 	}
@@ -167,7 +166,6 @@ func (s *Service) ResetUserPassword(
 	hashedPasswordUser, err := s.createHashedPasswordUser(&usercommon.User{
 		ID:                    targetUser.ID,
 		Name:                  targetUser.Name,
-		Account:               targetUser.Account,
 		Password:              newPassword,
 		RequireChangePassword: true,
 	})
@@ -205,7 +203,6 @@ func (s *Service) createHashedPasswordUser(
 
 	updatedUser := &usercommon.User{
 		ID:                    user.ID,
-		Account:               user.Account,
 		Name:                  user.Name,
 		Password:              protectedForm,
 		RequireChangePassword: user.RequireChangePassword,
@@ -219,9 +216,9 @@ func (s *Service) createHashedPasswordUser(
 // associated user. If it does, returns the matching user and the token info to
 // be used as authentication, otherwise returns an error.
 func (s *Service) AuthenticateUser(
-	ctx context.Context, account, password string) (*usercommon.User, *usercommon.TokenInfo, error) {
+	ctx context.Context, name, password string) (*usercommon.User, *usercommon.TokenInfo, error) {
 	condition := usercommon.User{
-		Account: account,
+		Name: name,
 	}
 	userInfo, err := s.userRepository.FindFirstUser(ctx, condition, []string{})
 	if err != nil {

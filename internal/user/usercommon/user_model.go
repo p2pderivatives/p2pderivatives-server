@@ -5,7 +5,6 @@ import "github.com/google/uuid"
 // User represents a user in the system.
 type User struct {
 	ID                    string `gorm:"primary_key; size:255"`
-	Account               string `gorm:"unique; not null; size:255"`
 	Name                  string `gorm:"unique; not null; size:255"`
 	Password              string `gorm:"not null; size:256"`
 	RequireChangePassword bool   `gorm:"not null"`
@@ -15,7 +14,7 @@ type User struct {
 // Condition represents conditions when looking up users.
 type Condition struct {
 	ID             string
-	Account        string
+	Name           string
 	Offset         int64
 	Limit          int64
 	SortConditions []string
@@ -30,10 +29,9 @@ type TokenInfo struct {
 }
 
 // NewUser creates a new User structure with the given parameters.
-func NewUser(account string, name string, password string) *User {
+func NewUser(name string, password string) *User {
 	user := User{
 		ID:                    generateUserID(),
-		Account:               account,
 		Name:                  name,
 		Password:              password,
 		RequireChangePassword: false,

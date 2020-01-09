@@ -14,7 +14,7 @@ import (
 type LoginCmd struct {
 	cmd      string
 	flagSet  *flag.FlagSet
-	account  *string
+	name     *string
 	password *string
 }
 
@@ -37,8 +37,8 @@ func (cmd *LoginCmd) Parse(args []string) {
 func (cmd *LoginCmd) Init() {
 	cmd.cmd = "login"
 	cmd.flagSet = flag.NewFlagSet(cmd.cmd, flag.ExitOnError)
-	cmd.account = cmd.flagSet.String("account", "", "The account of the user to register")
-	cmd.password = cmd.flagSet.String("password", "", "The password of the user to register")
+	cmd.name = cmd.flagSet.String("name", "", "The name of the user to login")
+	cmd.password = cmd.flagSet.String("password", "", "The password of the user to login")
 }
 
 // GetFlagSet returns the flag set for this command.
@@ -51,7 +51,7 @@ func (cmd *LoginCmd) Do(ctx context.Context, conn *grpc.ClientConn) {
 	client := authentication.NewAuthenticationClient(conn)
 
 	request := &authentication.LoginRequest{
-		Account: *cmd.account, Password: *cmd.password,
+		Name: *cmd.name, Password: *cmd.password,
 	}
 
 	response, err := client.Login(ctx, request)

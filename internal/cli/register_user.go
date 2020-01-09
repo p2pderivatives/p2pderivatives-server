@@ -14,7 +14,6 @@ import (
 type RegisterUserCmd struct {
 	cmd      string
 	flagSet  *flag.FlagSet
-	account  *string
 	name     *string
 	password *string
 }
@@ -33,7 +32,6 @@ func (cmd *RegisterUserCmd) Command() string {
 func (cmd *RegisterUserCmd) Init() {
 	cmd.cmd = "registeruser"
 	cmd.flagSet = flag.NewFlagSet(cmd.cmd, flag.ExitOnError)
-	cmd.account = cmd.flagSet.String("account", "", "The acount of the user to register")
 	cmd.name = cmd.flagSet.String("name", "", "The name of the user to register")
 	cmd.password = cmd.flagSet.String("password", "", "The password of the user to register")
 }
@@ -48,12 +46,11 @@ func (cmd *RegisterUserCmd) Do(ctx context.Context, conn *grpc.ClientConn) {
 
 	client := usercontroller.NewUserClient(conn)
 
-	if *cmd.account == "" || *cmd.name == "" || *cmd.password == "" {
+	if *cmd.name == "" || *cmd.password == "" {
 		log.Fatal("Account, name and password parameters are required")
 	}
 
 	request := usercontroller.UserRegisterRequest{
-		Account:  *cmd.account,
 		Name:     *cmd.name,
 		Password: *cmd.password,
 	}

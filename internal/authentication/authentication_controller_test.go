@@ -17,7 +17,6 @@ import (
 
 const (
 	name        = "test"
-	account     = "test"
 	password    = "p@ssw0rd"
 	badPassword = "p@sw0rd"
 )
@@ -26,7 +25,7 @@ func initService() (context.Context, *usercommon.Config, usercommon.ServiceIf) {
 	userConfig := usercommon.DefaultUserConfiguration()
 	ctx := context.Background()
 	userService := mock_userservice.NewServiceMock()
-	userService.CreateUser(ctx, usercommon.NewUser(account, name, password))
+	userService.CreateUser(ctx, usercommon.NewUser(name, password))
 	tokenConfig := &token.Config{}
 	test.GetTestConfig().InitializeComponentConfig(tokenConfig)
 	token.Init(tokenConfig)
@@ -39,7 +38,7 @@ func TestAuthenticationLogin_WithCorrectParameters_Succeeds(t *testing.T) {
 	ctx, config, service := initService()
 	controller := NewController(service, config)
 	request := &LoginRequest{
-		Account:  account,
+		Name:     name,
 		Password: password,
 	}
 	// Act
@@ -56,7 +55,7 @@ func TestAuthenticationLogin_WithIncorrectParameters_Fails(t *testing.T) {
 	ctx, config, service := initService()
 	controller := NewController(service, config)
 	request := &LoginRequest{
-		Account:  account,
+		Name:     name,
 		Password: badPassword,
 	}
 	// Act
@@ -73,7 +72,7 @@ func TestAuthenticationRefresh_WithCorrectToken_Succeeds(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	service := mock_usercommon.NewMockServiceIf(ctrl)
 	ctx, config, _ := initService()
-	userInstance := usercommon.NewUser(account, name, "")
+	userInstance := usercommon.NewUser(name, "")
 	tokenInfo := &usercommon.TokenInfo{
 		AccessToken:  "",
 		RefreshToken: "",
@@ -81,10 +80,10 @@ func TestAuthenticationRefresh_WithCorrectToken_Succeeds(t *testing.T) {
 	}
 	controller := NewController(service, config)
 	loginRequest := &LoginRequest{
-		Account:  account,
+		Name:     name,
 		Password: password,
 	}
-	service.EXPECT().AuthenticateUser(gomock.Any(), account, password).Return(userInstance, tokenInfo, nil)
+	service.EXPECT().AuthenticateUser(gomock.Any(), name, password).Return(userInstance, tokenInfo, nil)
 	service.EXPECT().RefreshUserToken(gomock.Any(), gomock.Any()).Return(tokenInfo, nil)
 	loginResponse, err := controller.Login(ctx, loginRequest)
 	request := &RefreshRequest{
@@ -128,11 +127,11 @@ func TestAuthenticationLogout_WithCorrectToken_NoError(t *testing.T) {
 	ctx, config, _ := initService()
 	controller := NewController(service, config)
 	loginRequest := &LoginRequest{
-		Account:  account,
+		Name:     name,
 		Password: password,
 	}
-	userInstance := usercommon.NewUser(account, name, "")
-	service.EXPECT().AuthenticateUser(gomock.Any(), account, password).
+	userInstance := usercommon.NewUser(name, "")
+	service.EXPECT().AuthenticateUser(gomock.Any(), name, password).
 		Return(userInstance, &usercommon.TokenInfo{}, nil)
 	service.EXPECT().RevokeRefreshToken(gomock.Any(), "").Return(nil)
 	loginResponse, err := controller.Login(ctx, loginRequest)

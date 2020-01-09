@@ -9,7 +9,7 @@ import (
 type ServiceIf interface {
 	CreateUser(ctx context.Context, condition *User) (*User, error)
 	FindFirstUser(ctx context.Context, condition *User, orders []string) (*User, error)
-	FindFirstUserByAccount(ctx context.Context, account string) (*User, error)
+	FindFirstUserByName(ctx context.Context, name string) (*User, error)
 	FindUsers(ctx context.Context, condition *User, offset int, limit int, orders []string) ([]User, error)
 	GetAllUsers(ctx context.Context) ([]User, error)
 	UpdateUser(ctx context.Context, condition *User) (*User, error)

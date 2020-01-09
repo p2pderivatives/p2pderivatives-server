@@ -34,12 +34,11 @@ func TestService_FindFirstUser(t *testing.T) {
 
 	model := &usercommon.User{
 		ID:       "id1",
-		Account:  "account1",
 		Name:     "hoge_taro1",
 		Password: "Pass1",
 	}
 
-	condition := &usercommon.User{Account: "account1"}
+	condition := &usercommon.User{Name: "hoge_taro1"}
 	_, err := service.FindFirstUser(ctx, condition, []string{"id"})
 
 	assert.NotNil(t, err)
@@ -51,7 +50,6 @@ func TestService_FindFirstUser(t *testing.T) {
 	result2, _ := service.FindFirstUser(ctx, condition, []string{"id"})
 
 	assert.Equal(t, result2.ID, "id1")
-	assert.Equal(t, result2.Account, "account1")
 	assert.Equal(t, result2.Name, "hoge_taro1")
 	assert.Equal(t, result2.Password, "Pass1")
 }
@@ -62,31 +60,26 @@ func TestService_FindUsers(t *testing.T) {
 
 	user1 := &usercommon.User{
 		ID:       "id1",
-		Account:  "account1",
 		Name:     "hoge_taro1",
 		Password: "Pass1",
 	}
 	user2 := &usercommon.User{
 		ID:       "id2",
-		Account:  "account2",
 		Name:     "hoge_taro2",
 		Password: "Pass2",
 	}
 	user3 := &usercommon.User{
 		ID:       "id3",
-		Account:  "account3",
 		Name:     "hoge_taro3",
 		Password: "Pass3",
 	}
 	user4 := &usercommon.User{
 		ID:       "id4",
-		Account:  "account4",
 		Name:     "hoge_jiro",
 		Password: "Pass4",
 	}
 	user5 := &usercommon.User{
 		ID:       "id5",
-		Account:  "account5",
 		Name:     "hoge_taro5",
 		Password: "Pass5",
 	}
@@ -108,22 +101,18 @@ func TestService_FindUsers(t *testing.T) {
 
 	assert.Equal(t, len(results), 5)
 	assert.Equal(t, results[0].ID, "id1")
-	assert.Equal(t, results[0].Account, "account1")
 	assert.Equal(t, results[0].Name, "hoge_taro1")
 	assert.Equal(t, results[0].Password, "Pass1")
 
 	assert.Equal(t, results[1].ID, "id2")
-	assert.Equal(t, results[1].Account, "account2")
 	assert.Equal(t, results[1].Name, "hoge_taro2")
 	assert.Equal(t, results[1].Password, "Pass2")
 
 	assert.Equal(t, results[2].ID, "id3")
-	assert.Equal(t, results[2].Account, "account3")
 	assert.Equal(t, results[2].Name, "hoge_taro3")
 	assert.Equal(t, results[2].Password, "Pass3")
 
 	assert.Equal(t, results[4].ID, "id5")
-	assert.Equal(t, results[4].Account, "account5")
 	assert.Equal(t, results[4].Name, "hoge_taro5")
 	assert.Equal(t, results[4].Password, "Pass5")
 
@@ -132,12 +121,10 @@ func TestService_FindUsers(t *testing.T) {
 
 	assert.Equal(t, len(results2), 3)
 	assert.Equal(t, results2[0].ID, "id3")
-	assert.Equal(t, results2[0].Account, "account3")
 	assert.Equal(t, results2[0].Name, "hoge_taro3")
 	assert.Equal(t, results2[0].Password, "Pass3")
 
 	assert.Equal(t, results2[2].ID, "id5")
-	assert.Equal(t, results2[2].Account, "account5")
 	assert.Equal(t, results2[2].Name, "hoge_taro5")
 	assert.Equal(t, results2[2].Password, "Pass5")
 
@@ -145,12 +132,10 @@ func TestService_FindUsers(t *testing.T) {
 	results3, _ := service.FindUsers(ctx, condition, 0, 2, []string{"id"})
 
 	assert.Equal(t, results3[0].ID, "id1")
-	assert.Equal(t, results3[0].Account, "account1")
 	assert.Equal(t, results3[0].Name, "hoge_taro1")
 	assert.Equal(t, results3[0].Password, "Pass1")
 
 	assert.Equal(t, results3[1].ID, "id2")
-	assert.Equal(t, results3[1].Account, "account2")
 	assert.Equal(t, results3[1].Name, "hoge_taro2")
 	assert.Equal(t, results3[1].Password, "Pass2")
 }
@@ -160,7 +145,6 @@ func TestService_CreateUser(t *testing.T) {
 
 	user := &usercommon.User{
 		ID:       "id1",
-		Account:  "account1",
 		Name:     "hoge_taro1",
 		Password: "Pass1",
 	}
@@ -168,7 +152,6 @@ func TestService_CreateUser(t *testing.T) {
 	createdUser, _ := service.CreateUser(context.Background(), user)
 
 	assert.Equal(t, createdUser.ID, "id1")
-	assert.Equal(t, createdUser.Account, "account1")
 	assert.Equal(t, createdUser.Name, "hoge_taro1")
 }
 
@@ -176,7 +159,7 @@ func TestService_UpdateUser(t *testing.T) {
 	repo, service := createRepoAndService()
 	ctx := context.Background()
 
-	orgUser := usercommon.NewUser("account1", "hoge_taro", "password1")
+	orgUser := usercommon.NewUser("hoge_taro", "password1")
 
 	insertTarget := append(make([]*usercommon.User, 0), orgUser)
 	mock_userrepository.InsertTestUserData(repo, insertTarget)
@@ -186,13 +169,11 @@ func TestService_UpdateUser(t *testing.T) {
 
 	assert.Equal(t, len(orgResults), 1)
 	assert.NotNil(t, orgResults[0].ID)
-	assert.Equal(t, orgResults[0].Account, "account1")
 	assert.Equal(t, orgResults[0].Name, "hoge_taro")
 	assert.NotNil(t, orgResults[0].Password)
 
 	expected := &usercommon.User{
 		ID:                    orgResults[0].ID,
-		Account:               orgResults[0].Account,
 		Name:                  "piyo_taro",
 		Password:              orgResults[0].Password,
 		RequireChangePassword: orgResults[0].RequireChangePassword,
@@ -200,7 +181,6 @@ func TestService_UpdateUser(t *testing.T) {
 
 	actual, _ := service.UpdateUser(ctx, &usercommon.User{
 		ID:                    expected.ID,
-		Account:               expected.Account,
 		Name:                  expected.Name,
 		RequireChangePassword: expected.RequireChangePassword,
 	})
@@ -217,7 +197,6 @@ func TestService_UpdateUser(t *testing.T) {
 
 	assert.Equal(t, len(updatedResults), 1)
 	assert.NotNil(t, updatedResults[0].ID)
-	assert.Equal(t, updatedResults[0].Account, "account1")
 	assert.Equal(t, updatedResults[0].Name, "piyo_taro")
 	assert.NotNil(t, updatedResults[0].Password)
 }
@@ -226,7 +205,7 @@ func TestService_DeleteUser(t *testing.T) {
 	repo, service := createRepoAndService()
 	ctx := context.Background()
 
-	orgUser := usercommon.NewUser("account1", "hoge_taro", "password1")
+	orgUser := usercommon.NewUser("hoge_taro", "password1")
 
 	insertTarget := append(make([]*usercommon.User, 0), orgUser)
 	mock_userrepository.InsertTestUserData(repo, insertTarget)
@@ -236,7 +215,6 @@ func TestService_DeleteUser(t *testing.T) {
 
 	assert.Equal(t, len(orgResults), 1)
 	assert.NotNil(t, orgResults[0].ID)
-	assert.Equal(t, orgResults[0].Account, "account1")
 	assert.Equal(t, orgResults[0].Name, "hoge_taro")
 	assert.NotNil(t, orgResults[0].Password)
 
@@ -248,7 +226,6 @@ func TestService_DeleteUser(t *testing.T) {
 
 	assert.Equal(t, len(orgResults2), 1)
 	assert.NotNil(t, orgResults2[0].ID)
-	assert.Equal(t, orgResults2[0].Account, "account1")
 	assert.Equal(t, orgResults2[0].Name, "hoge_taro")
 	assert.NotNil(t, orgResults2[0].Password)
 
@@ -267,17 +244,16 @@ func TestService_ChangeUserPassword(t *testing.T) {
 	ctx := context.Background()
 
 	const (
-		account     = "account1"
 		name        = "name1"
 		oldPassword = "oldP@ssw0rd"
 		newPassword = "newP@ssw0rd"
 	)
-	orgUser := usercommon.NewUser(account, name, oldPassword)
+	orgUser := usercommon.NewUser(name, oldPassword)
 	orgUser, _ = service.CreateUser(ctx, orgUser)
 
 	newPasswordUser, err := service.ChangeUserPassword(
 		ctx,
-		account,
+		name,
 		oldPassword,
 		newPassword,
 	)
@@ -291,17 +267,16 @@ func TestService_ResetUserPassword(t *testing.T) {
 	ctx := context.Background()
 
 	const (
-		account     = "account1"
 		name        = "name1"
 		oldPassword = "oldP@ssw0rd"
 		newPassword = "newP@ssw0rd"
 	)
-	orgUser := usercommon.NewUser(account, name, oldPassword)
+	orgUser := usercommon.NewUser(name, oldPassword)
 	service.CreateUser(ctx, orgUser)
 
 	newPasswordUser, err := service.ResetUserPassword(
 		ctx,
-		account,
+		name,
 		newPassword,
 	)
 
@@ -315,7 +290,7 @@ func TestServiceAuthenticateUser_WithValidPassword_Succeeds(t *testing.T) {
 	service, ctx := initTestHelper()
 
 	// Act
-	actual, tokenInfo, err := service.AuthenticateUser(ctx, account, password)
+	actual, tokenInfo, err := service.AuthenticateUser(ctx, name, password)
 
 	// Assert
 	assert.NoError(err)
@@ -329,7 +304,7 @@ func TestServiceAuthenticateUser_WithInvalidPassword_Error(t *testing.T) {
 	service, ctx := initTestHelper()
 
 	// Act
-	actual, tokenInfo, err := service.AuthenticateUser(ctx, account, badPassword)
+	actual, tokenInfo, err := service.AuthenticateUser(ctx, name, badPassword)
 
 	// Assert
 	assert.Error(err)
@@ -341,11 +316,11 @@ func TestRevokeRefreshToken_WithCorrectToken_IsRevoked(t *testing.T) {
 	// Arrange
 	assert := assert.New(t)
 	service, ctx := initTestHelper()
-	_, tokenInfo, _ := service.AuthenticateUser(ctx, account, password)
+	_, tokenInfo, _ := service.AuthenticateUser(ctx, name, password)
 
 	// Act
 	err := service.RevokeRefreshToken(ctx, tokenInfo.RefreshToken)
-	user, _ := service.FindFirstUserByAccount(ctx, account)
+	user, _ := service.FindFirstUserByName(ctx, name)
 
 	// Assert
 	assert.NoError(err)
@@ -356,11 +331,11 @@ func TestRefreshUserToken_WithCorrectRefreshToken_IsRefreshed(t *testing.T) {
 	// Arrange
 	assert := assert.New(t)
 	service, ctx := initTestHelper()
-	orgUser, tokenInfo, _ := service.AuthenticateUser(ctx, account, password)
+	orgUser, tokenInfo, _ := service.AuthenticateUser(ctx, name, password)
 
 	// Act
 	refreshedTokenInfo, err := service.RefreshUserToken(ctx, tokenInfo.RefreshToken)
-	refreshedUser, _ := service.FindFirstUserByAccount(ctx, account)
+	refreshedUser, _ := service.FindFirstUserByName(ctx, name)
 
 	// Assert
 	assert.NoError(err)
@@ -369,7 +344,6 @@ func TestRefreshUserToken_WithCorrectRefreshToken_IsRefreshed(t *testing.T) {
 }
 
 const (
-	account     = "test"
 	name        = "test"
 	password    = "p@assw0rd"
 	badPassword = "p@ssword"
@@ -377,7 +351,7 @@ const (
 
 func initTestHelper() (*userservice.Service, context.Context) {
 	_, service := createRepoAndService()
-	model := usercommon.NewUser(account, name, password)
+	model := usercommon.NewUser(name, password)
 	ctx := context.Background()
 	service.CreateUser(ctx, model)
 	initToken()
