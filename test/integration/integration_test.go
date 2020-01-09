@@ -61,11 +61,18 @@ func TestIntegration(t *testing.T) {
 		assert.FailNow("Could not get clients.")
 	}
 
+	_, authClient3, err := getClients(serverAddress)
+
+	if err != nil {
+		assert.FailNow("Could not get clients.")
+	}
+
 	assertUserRegistration(assert, userClient1, user1)
 	assertUserRegistration(assert, userClient2, user2)
 
 	accessToken1, _ := assertLogin(assert, authClient1, user1)
 	accessToken2, _ := assertLogin(assert, authClient2, user2)
+	assertFailedLogin(assert, authClient3)
 
 	assertClientList(
 		assert, userClient1, accessToken1, []string{user1.Name, user2.Name})
@@ -122,6 +129,24 @@ func assertLogin(
 	accessToken = loginResponse.Token.AccessToken
 	refreshToken = loginResponse.Token.RefreshToken
 	return
+}
+
+func assertFailedLogin(
+	assert *assert.Assertions,
+	authClient authentication.AuthenticationClient) {
+	loginRequest := &authentication.LoginRequest{
+		Account:  "doesntexist",
+		Password: "password",
+	}
+	loginResponse, err := authClient.Login(context.Background(), loginRequest)
+	assert.Nil(loginResponse)
+	statusErr, ok := status.FromError(err)
+	assert.True(ok)
+	if ok {
+		assert.Equal(codes.Unauthenticated, statusErr.Code())
+		assert.Equal("Fail to authenticate user.", statusErr.Message())
+		assert.Empty(statusErr.Details())
+	}
 }
 
 func assertClientList(
