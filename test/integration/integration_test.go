@@ -29,13 +29,11 @@ const (
 )
 
 var user1 = &usercommon.User{
-	Account:  "Account1",
 	Name:     "Name1",
 	Password: "P@ssw0rd1",
 }
 
 var user2 = &usercommon.User{
-	Account:  "Account2",
 	Name:     "Name2",
 	Password: "P@ssw2rd2",
 }
@@ -82,7 +80,6 @@ func TestIntegration(t *testing.T) {
 func assertUserRegistration(
 	assert *assert.Assertions, userClient usercontroller.UserClient, model *usercommon.User) {
 	registerRequest := &usercontroller.UserRegisterRequest{
-		Account:  model.Account,
 		Name:     model.Name,
 		Password: model.Password,
 	}
@@ -112,7 +109,7 @@ func assertLogin(
 	model *usercommon.User) (accessToken string, refreshToken string) {
 
 	loginRequest := &authentication.LoginRequest{
-		Account:  model.Account,
+		Name:     model.Name,
 		Password: model.Password,
 	}
 

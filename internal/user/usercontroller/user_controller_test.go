@@ -33,7 +33,6 @@ func createController() *usercontroller.Controller {
 
 func createUserRegisterRequest(model *usercommon.User) *usercontroller.UserRegisterRequest {
 	return &usercontroller.UserRegisterRequest{
-		Account:  model.Account,
 		Name:     model.Name,
 		Password: model.Password,
 	}
@@ -42,7 +41,6 @@ func createUserRegisterRequest(model *usercommon.User) *usercontroller.UserRegis
 func createUser() *usercommon.User {
 	userCount++
 	return usercommon.NewUser(
-		strings.Join([]string{"Account", strconv.Itoa(userCount)}, ""),
 		strings.Join([]string{"Name", strconv.Itoa(userCount)}, ""),
 		strings.Join([]string{"Password", strconv.Itoa(userCount)}, ""))
 }
