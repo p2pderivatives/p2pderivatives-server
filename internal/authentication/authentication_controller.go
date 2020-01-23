@@ -26,17 +26,16 @@ func (s *Controller) Login(
 	ctx context.Context,
 	req *LoginRequest,
 ) (*LoginResponse, error) {
-	ctx, log := log.Save(ctx, logrus.Fields{"account": req.Account})
+	ctx, log := log.Save(ctx, logrus.Fields{"name": req.Name})
 	log.Info("Login Request")
-	user, userToken, serr := s.userService.AuthenticateUser(ctx, req.Account, req.Password)
+	user, userToken, serr := s.userService.AuthenticateUser(ctx, req.Name, req.Password)
 	if serr != nil {
 		return nil, servererror.GetGrpcStatus(ctx, serr).Err()
 	}
 
 	log.Info("Login Success")
 	return &LoginResponse{
-		Name:    user.Name,
-		Account: user.Account,
+		Name: user.Name,
 		Token: &TokenInfo{
 			AccessToken:  userToken.AccessToken,
 			RefreshToken: userToken.RefreshToken,

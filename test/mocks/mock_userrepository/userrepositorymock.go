@@ -60,13 +60,12 @@ func (repo *RepositoryMock) FindFirstUser(
 	}
 
 	if model.ID == "" {
-		if model.Account != "" {
-			return repo.FindFirstUserByAccount(ctx, condition)
+		if model.Name != "" {
+			return repo.FindFirstUserByName(ctx, condition)
 		} else if model.RefreshToken != "" {
 			return repo.FindFirstUserByRefreshToken(ctx, condition)
-		} else {
-			panic("No implemented.")
 		}
+		panic("No implemented.")
 	}
 
 	result, ok := repo.storage[model.ID]
@@ -78,8 +77,8 @@ func (repo *RepositoryMock) FindFirstUser(
 	return result, nil
 }
 
-// FindFirstUserByAccount return the user matching the given condition.
-func (repo *RepositoryMock) FindFirstUserByAccount(
+// FindFirstUserByName return the user matching the given condition.
+func (repo *RepositoryMock) FindFirstUserByName(
 	ctx context.Context, condition interface{}) (*usercommon.User, error) {
 
 	query, ok := condition.(usercommon.User)
@@ -87,12 +86,12 @@ func (repo *RepositoryMock) FindFirstUserByAccount(
 		query = *condition.(*usercommon.User)
 	}
 
-	if query.Account == "" {
-		panic("No account in query.")
+	if query.Name == "" {
+		panic("No name in query.")
 	}
 
 	for _, user := range repo.storage {
-		if user.Account == query.Account {
+		if user.Name == query.Name {
 			return makeUserCopy(user), nil
 		}
 	}
@@ -145,14 +144,16 @@ func (repo *RepositoryMock) FindUsers(
 	orders []string) ([]usercommon.User, error) {
 	query := condition.(usercommon.User)
 	if query.ID == "" {
-		if query.Account == "" {
+		if query.Name == "" {
 			result, err := repo.GetAllUsers(ctx)
 			sort.Sort(ByName{users: result})
 			return result[offset:], err
 		}
 		result := make([]usercommon.User, 0)
-		user, _ := repo.FindFirstUserByAccount(ctx, query)
-		result = append(result, *user)
+		user, _ := repo.FindFirstUserByName(ctx, query)
+		if user != nil {
+			result = append(result, *user)
+		}
 		return result, nil
 	}
 
@@ -201,7 +202,6 @@ func InsertTestUserData(repo *RepositoryMock, models []*usercommon.User) {
 func makeUserCopy(model *usercommon.User) *usercommon.User {
 	return &usercommon.User{
 		ID:                    model.ID,
-		Account:               model.Account,
 		Name:                  model.Name,
 		Password:              model.Password,
 		RequireChangePassword: model.RequireChangePassword,

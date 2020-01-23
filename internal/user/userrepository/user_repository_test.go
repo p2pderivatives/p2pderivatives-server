@@ -37,7 +37,6 @@ func TestRepository_FindFirstUser(t *testing.T) {
 
 	user := &usercommon.User{
 		ID:       "id1",
-		Account:  "account1",
 		Name:     "hoge_taro1",
 		Password: "Pass1",
 	}
@@ -45,12 +44,11 @@ func TestRepository_FindFirstUser(t *testing.T) {
 	insertTarget := append(make([]*usercommon.User, 0), user)
 	insertTestDataToTx(tx, insertTarget)
 
-	condition := usercommon.User{Account: "account1"}
+	condition := usercommon.User{Name: "hoge_taro1"}
 
 	result, _ := repo.FindFirstUser(ctx, condition, []string{"id"})
 
 	assert.Equal(t, result.ID, "id1")
-	assert.Equal(t, result.Account, "account1")
 	assert.Equal(t, result.Name, "hoge_taro1")
 	assert.Equal(t, result.Password, "Pass1")
 }
@@ -59,9 +57,9 @@ func TestAddressRepository_CountUsers(t *testing.T) {
 	ctx, repo, tx := createContextRepoAndTx()
 	defer tx.Rollback()
 
-	user1 := usercommon.NewUser("account1", "hoge_taro", "password1")
-	user2 := usercommon.NewUser("account2", "hoge_jiro", "password2")
-	user3 := usercommon.NewUser("account3", "hoge_taro2", "password3")
+	user1 := usercommon.NewUser("hoge_taro", "password1")
+	user2 := usercommon.NewUser("hoge_jiro", "password2")
+	user3 := usercommon.NewUser("hoge_taro2", "password3")
 
 	insertTarget := append(
 		make([]*usercommon.User, 0),
@@ -87,14 +85,13 @@ func TestRepository_CreateUser(t *testing.T) {
 
 	assert.Equal(t, len(notfoundResults), 0)
 
-	user := usercommon.NewUser("account1", "hoge_taro", "password1")
+	user := usercommon.NewUser("hoge_taro", "password1")
 
 	_ = repo.CreateUser(ctx, user)
 	foundResults, _ := repo.FindUsers(ctx, condition, 0, 100, []string{"id"})
 
 	assert.Equal(t, len(foundResults), 1)
 	assert.NotNil(t, foundResults[0].ID)
-	assert.Equal(t, foundResults[0].Account, "account1")
 	assert.Equal(t, foundResults[0].Name, "hoge_taro")
 	assert.NotNil(t, foundResults[0].Password)
 }
@@ -103,7 +100,7 @@ func TestRepository_UpdateUser(t *testing.T) {
 	ctx, repo, tx := createContextRepoAndTx()
 	defer tx.Rollback()
 
-	orgUser := usercommon.NewUser("account1", "hoge_taro", "password1")
+	orgUser := usercommon.NewUser("hoge_taro", "password1")
 
 	insertTarget := append(make([]*usercommon.User, 0), orgUser)
 	_ = insertTestDataToTx(tx, insertTarget)
@@ -113,7 +110,6 @@ func TestRepository_UpdateUser(t *testing.T) {
 
 	assert.Equal(t, len(orgResults), 1)
 	assert.NotNil(t, orgResults[0].ID)
-	assert.Equal(t, orgResults[0].Account, "account1")
 	assert.Equal(t, orgResults[0].Name, "hoge_taro")
 	assert.NotNil(t, orgResults[0].Password)
 
@@ -132,7 +128,6 @@ func TestRepository_UpdateUser(t *testing.T) {
 
 	assert.Equal(t, len(updatedResults), 1)
 	assert.NotNil(t, updatedResults[0].ID)
-	assert.Equal(t, updatedResults[0].Account, "account1")
 	assert.Equal(t, updatedResults[0].Name, "piyo_taro")
 	assert.NotNil(t, updatedResults[0].Password)
 }
@@ -141,7 +136,7 @@ func TestRepository_DeleteUser(t *testing.T) {
 	ctx, repo, tx := createContextRepoAndTx()
 	defer tx.Rollback()
 
-	orgUser := usercommon.NewUser("account1", "hoge_taro", "password1")
+	orgUser := usercommon.NewUser("hoge_taro", "password1")
 
 	insertTarget := append(make([]*usercommon.User, 0), orgUser)
 	_ = insertTestDataToTx(tx, insertTarget)
@@ -151,7 +146,6 @@ func TestRepository_DeleteUser(t *testing.T) {
 
 	assert.Equal(t, len(orgResults), 1)
 	assert.NotNil(t, orgResults[0].ID)
-	assert.Equal(t, orgResults[0].Account, "account1")
 	assert.Equal(t, orgResults[0].Name, "hoge_taro")
 	assert.NotNil(t, orgResults[0].Password)
 
@@ -162,7 +156,6 @@ func TestRepository_DeleteUser(t *testing.T) {
 
 	assert.Equal(t, len(orgResults2), 1)
 	assert.NotNil(t, orgResults2[0].ID)
-	assert.Equal(t, orgResults2[0].Account, "account1")
 	assert.Equal(t, orgResults2[0].Name, "hoge_taro")
 	assert.NotNil(t, orgResults2[0].Password)
 
@@ -183,8 +176,8 @@ func TestRepository_CreateUsers(t *testing.T) {
 
 	assert.Equal(t, len(notfoundResults), 0)
 
-	exchange1 := usercommon.NewUser("account1", "hoge_taro", "password")
-	exchange2 := usercommon.NewUser("account2", "hoge_jiro", "password")
+	exchange1 := usercommon.NewUser("hoge_taro", "password")
+	exchange2 := usercommon.NewUser("hoge_jiro", "password")
 
 	insertTargets := append(make([]*usercommon.User, 0), exchange1, exchange2)
 
@@ -193,12 +186,10 @@ func TestRepository_CreateUsers(t *testing.T) {
 
 	assert.Equal(t, len(foundResults), 2)
 	assert.NotNil(t, foundResults[0].ID)
-	assert.Equal(t, foundResults[0].Account, "account1")
 	assert.Equal(t, foundResults[0].Name, "hoge_taro")
 	assert.NotNil(t, foundResults[0].Password)
 
 	assert.NotNil(t, foundResults[1].ID)
-	assert.Equal(t, foundResults[1].Account, "account2")
 	assert.Equal(t, foundResults[1].Name, "hoge_jiro")
 	assert.NotNil(t, foundResults[1].Password)
 }
@@ -207,8 +198,8 @@ func TestRepository_UpdateUsers(t *testing.T) {
 	ctx, repo, tx := createContextRepoAndTx()
 	defer tx.Rollback()
 
-	user1 := usercommon.NewUser("account1", "hoge_taro", "password")
-	user2 := usercommon.NewUser("account2", "hoge_jiro", "password")
+	user1 := usercommon.NewUser("hoge_taro", "password")
+	user2 := usercommon.NewUser("hoge_jiro", "password")
 
 	insertTargets := append(make([]*usercommon.User, 0), user1, user2)
 
@@ -219,12 +210,10 @@ func TestRepository_UpdateUsers(t *testing.T) {
 
 	assert.Equal(t, len(orgResults), 2)
 	assert.NotNil(t, orgResults[0].ID)
-	assert.Equal(t, orgResults[0].Account, "account1")
 	assert.Equal(t, orgResults[0].Name, "hoge_taro")
 	assert.NotNil(t, orgResults[0].Password)
 
 	assert.NotNil(t, orgResults[1].ID)
-	assert.Equal(t, orgResults[1].Account, "account2")
 	assert.Equal(t, orgResults[1].Name, "hoge_jiro")
 	assert.NotNil(t, orgResults[1].Password)
 
@@ -247,12 +236,10 @@ func TestRepository_UpdateUsers(t *testing.T) {
 
 	assert.Equal(t, len(updateResults3), 2)
 	assert.NotNil(t, updateResults3[0].ID)
-	assert.Equal(t, updateResults3[0].Account, "account1")
 	assert.Equal(t, updateResults3[0].Name, "piyo_taro")
 	assert.NotNil(t, updateResults3[0].Password)
 
 	assert.NotNil(t, updateResults3[1].ID)
-	assert.Equal(t, updateResults3[1].Account, "account2")
 	assert.Equal(t, updateResults3[1].Name, "piyo_jiro")
 	assert.NotNil(t, updateResults3[1].Password)
 }
@@ -261,8 +248,8 @@ func TestRepository_DeleteUsers(t *testing.T) {
 	ctx, repo, tx := createContextRepoAndTx()
 	defer tx.Rollback()
 
-	user1 := usercommon.NewUser("account1", "hoge_taro", "password")
-	user2 := usercommon.NewUser("account2", "hoge_jiro", "password")
+	user1 := usercommon.NewUser("hoge_taro", "password")
+	user2 := usercommon.NewUser("hoge_jiro", "password")
 
 	insertTargets := append(make([]*usercommon.User, 0), user1, user2)
 
@@ -273,12 +260,10 @@ func TestRepository_DeleteUsers(t *testing.T) {
 
 	assert.Equal(t, len(orgResults), 2)
 	assert.NotNil(t, orgResults[0].ID)
-	assert.Equal(t, orgResults[0].Account, "account1")
 	assert.Equal(t, orgResults[0].Name, "hoge_taro")
 	assert.NotNil(t, orgResults[0].Password)
 
 	assert.NotNil(t, orgResults[1].ID)
-	assert.Equal(t, orgResults[1].Account, "account2")
 	assert.Equal(t, orgResults[1].Name, "hoge_jiro")
 	assert.NotNil(t, orgResults[1].Password)
 
@@ -294,7 +279,6 @@ func createTestUserData(count int) (result []*usercommon.User) {
 	result = make([]*usercommon.User, 0)
 	for i := 0; i < count; i++ {
 		data := usercommon.User{ID: "id" + fmt.Sprintf("%02d", i),
-			Account:  "account" + fmt.Sprintf("%02d", i),
 			Name:     "name" + fmt.Sprintf("%02d", i),
 			Password: "password" + fmt.Sprintf("%02d", i)}
 		result = append(result, &data)

@@ -37,10 +37,10 @@ func (service *ServiceMock) FindFirstUser(
 	return service.repo.FindFirstUser(ctx, condition, orders)
 }
 
-// FindFirstUserByAccount finds the user based on account.
-func (service *ServiceMock) FindFirstUserByAccount(
-	ctx context.Context, account string) (*usercommon.User, error) {
-	return service.repo.FindFirstUserByAccount(ctx, &usercommon.User{Account: account})
+// FindFirstUserByName finds the user based on account.
+func (service *ServiceMock) FindFirstUserByName(
+	ctx context.Context, name string) (*usercommon.User, error) {
+	return service.repo.FindFirstUserByName(ctx, &usercommon.User{Name: name})
 }
 
 // FindUsers find users.
@@ -72,8 +72,8 @@ func (service *ServiceMock) DeleteUser(
 
 // AuthenticateUser authenticates a usercommon.
 func (service *ServiceMock) AuthenticateUser(
-	ctx context.Context, account, password string) (*usercommon.User, *usercommon.TokenInfo, error) {
-	model, err := service.FindFirstUserByAccount(ctx, account)
+	ctx context.Context, name, password string) (*usercommon.User, *usercommon.TokenInfo, error) {
+	model, err := service.FindFirstUserByName(ctx, name)
 	if err != nil || model.Password != password {
 		return nil, nil, errors.New("Bad login")
 	}
