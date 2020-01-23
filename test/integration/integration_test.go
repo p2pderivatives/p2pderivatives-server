@@ -132,7 +132,7 @@ func assertFailedLogin(
 	assert *assert.Assertions,
 	authClient authentication.AuthenticationClient) {
 	loginRequest := &authentication.LoginRequest{
-		Account:  "doesntexist",
+		Name:     "doesntexist",
 		Password: "password",
 	}
 	loginResponse, err := authClient.Login(context.Background(), loginRequest)
