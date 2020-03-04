@@ -1,4 +1,4 @@
-FROM golang:1.13.5-alpine
+FROM golang:1.14-alpine
 
 EXPOSE 8080
 
@@ -14,6 +14,8 @@ RUN mkdir -p /opt/p2pserver
 ADD . / /opt/p2pserver/
 
 WORKDIR /opt/p2pserver
-RUN make setup
+RUN make install
+RUN make gen-proto
+RUN make server
 
 CMD ["make", "run-server-local"]

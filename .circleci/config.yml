@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/golang:1.12.7
+      - image: circleci/golang:1.14
     environment:
      ARTIFACTS: /tmp/artifacts
     steps:
@@ -18,8 +18,7 @@ jobs:
          name: Run unit tests
          command: |
           ./scripts/install_protoc.sh
-          go mod vendor
-          make install
+          make setup
           make gen
           go test -coverprofile=coverage.out -v ./... > unit_tests.out
           go tool cover -html=coverage.out -o coverage.html
