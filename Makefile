@@ -1,4 +1,4 @@
-setup: install gen-proto deps gen-mock
+setup: install gen deps
 	echo "setup done"
 
 install:
@@ -6,9 +6,13 @@ install:
 	GO111MODULE=off go get -u github.com/mwitkow/go-proto-validators/protoc-gen-govalidators
 	GO111MODULE=off go get -u github.com/golang/mock/gomock
 	GO111MODULE=on go get -u github.com/golang/mock/mockgen
+	GO111MODULE=on go get -u google.golang.org/grpc
 
 deps:
-	go mod tidy; go mod vendor
+	go mod tidy
+
+vendor:
+	go mod vendor
 
 gen:
 	@make gen-proto
