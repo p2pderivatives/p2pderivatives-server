@@ -12,9 +12,7 @@ import (
 	"p2pderivatives-server/internal/user/usercommon"
 	"p2pderivatives-server/internal/user/usercontroller"
 	"path/filepath"
-	"sync"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -74,8 +72,6 @@ func TestIntegration(t *testing.T) {
 
 	assertClientList(
 		assert, userClient1, accessToken1, []string{user1.Name, user2.Name})
-
-	assertUserStatuses(assert, userClient1, userClient2, user1, user2, accessToken1, accessToken2)
 
 	assertUserUnregister(assert, userClient2, user2, accessToken2)
 
@@ -178,80 +174,6 @@ func assertClientList(
 
 	for _, name := range userNames {
 		assert.Contains(expectedList, name)
-	}
-}
-
-func assertUserStatuses(
-	assert *assert.Assertions,
-	userClient1 usercontroller.UserClient,
-	userClient2 usercontroller.UserClient,
-	user1 *usercommon.User,
-	user2 *usercommon.User,
-	accessToken1 string,
-	accessToken2 string) {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	var userNotices1 []*usercontroller.UserNotice
-	var userNotices2 []*usercontroller.UserNotice
-	var err1 error
-	var err2 error
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	go func() {
-		userNotices1, err1 = getUserStatuses(ctx, userClient1, accessToken1, &wg)
-	}()
-	go func() {
-		userNotices2, err2 = getUserStatuses(ctx, userClient2, accessToken2, &wg)
-	}()
-
-	time.Sleep(5 * time.Second)
-	cancel()
-	wg.Wait()
-
-	grpcStatus1, ok1 := status.FromError(err1)
-	grpcStatus2, ok2 := status.FromError(err2)
-
-	assert.True(ok1)
-	assert.True(ok2)
-	assert.Equal(codes.Canceled, grpcStatus1.Code())
-	assert.Equal(codes.Canceled, grpcStatus2.Code())
-
-	assert.Contains(userNotices1, &usercontroller.UserNotice{
-		Name:   user2.Name,
-		Status: usercontroller.UserStatus_CONNECTED,
-	})
-
-	assert.Contains(userNotices2, &usercontroller.UserNotice{
-		Name:   user1.Name,
-		Status: usercontroller.UserStatus_CONNECTED,
-	})
-}
-
-func getUserStatuses(
-	ctx context.Context,
-	userClient usercontroller.UserClient,
-	accessToken string,
-	wg *sync.WaitGroup) ([]*usercontroller.UserNotice, error) {
-	ctx = metadata.AppendToOutgoingContext(
-		ctx, token.MetaKeyAuthentication, accessToken)
-	stream, err := userClient.GetUserStatuses(ctx, &usercontroller.Empty{})
-	if err != nil {
-		wg.Done()
-		return nil, err
-	}
-
-	notices := make([]*usercontroller.UserNotice, 0)
-
-	for {
-		notice, err := stream.Recv()
-
-		if err != nil {
-			wg.Done()
-			return notices, err
-		}
-
-		notices = append(notices, notice)
 	}
 }
 
