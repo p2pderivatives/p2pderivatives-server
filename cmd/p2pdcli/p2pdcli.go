@@ -38,7 +38,6 @@ func init() {
 		cli.NewRegisterUserCmd(),
 		cli.NewUnregisterUserCmd(),
 		cli.NewGetUserListCmd(),
-		cli.NewGetUserStatusesCmd(),
 		cli.NewLoginCmd(),
 	} {
 		cmd.Init()
