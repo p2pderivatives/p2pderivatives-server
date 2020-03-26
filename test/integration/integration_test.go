@@ -12,7 +12,9 @@ import (
 	"p2pderivatives-server/internal/user/usercommon"
 	"p2pderivatives-server/internal/user/usercontroller"
 	"path/filepath"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -73,11 +75,13 @@ func TestIntegration(t *testing.T) {
 	assertClientList(
 		assert, userClient1, accessToken1, []string{user1.Name, user2.Name})
 
+	assertMessaging(
+		assert, userClient1, userClient2, user1, user2, accessToken1, accessToken2)
+
 	assertUserUnregister(assert, userClient2, user2, accessToken2)
 
 	assertClientList(
 		assert, userClient1, accessToken1, []string{user1.Name})
-
 }
 
 func assertUserRegistration(
@@ -175,6 +179,93 @@ func assertClientList(
 	for _, name := range userNames {
 		assert.Contains(expectedList, name)
 	}
+}
+
+func assertMessaging(
+	assert *assert.Assertions,
+	userClient1 usercontroller.UserClient,
+	userClient2 usercontroller.UserClient,
+	user1 *usercommon.User,
+	user2 *usercommon.User,
+	accessToken1 string,
+	accessToken2 string) {
+	ctx1 := metadata.AppendToOutgoingContext(
+		context.Background(), token.MetaKeyAuthentication, accessToken1)
+
+	ctx2 := metadata.AppendToOutgoingContext(
+		context.Background(), token.MetaKeyAuthentication, accessToken2)
+
+	payload := []byte("Hello")
+	message := &usercontroller.DlcMessage{Payload: payload, DestName: user1.Name}
+	var receivedMessage *usercontroller.DlcMessage
+	var err1, err2 error
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		var stream usercontroller.User_ReceiveDlcMessagesClient
+		ctx1, cancel := context.WithCancel(ctx1)
+		stream, err1 = userClient1.ReceiveDlcMessages(ctx1, &usercontroller.Empty{})
+
+		if err1 != nil {
+			wg.Done()
+			cancel()
+			return
+		}
+
+		wg.Done()
+
+		receivedMessage, err1 = stream.Recv()
+		cancel()
+		wg.Done()
+	}()
+
+	time.Sleep(time.Millisecond * 5)
+	wg.Wait()
+
+	assert.NoError(err1)
+
+	if err1 != nil {
+		return
+	}
+
+	wg.Add(1)
+
+	stream, err3 := userClient1.GetConnectedUsers(ctx2, &usercontroller.Empty{})
+	assert.NoError(err3)
+	userNames := make([]string, 0)
+
+	for {
+		userInfo, err := stream.Recv()
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			log.Fatalf("%v.GetUserList(_) = _, %v", userClient2, err)
+		}
+
+		userNames = append(userNames, userInfo.Name)
+	}
+
+	assert.Len(userNames, 1)
+	assert.Equal(user1.Name, userNames[0])
+
+	_, err2 = userClient2.SendDlcMessage(ctx2, message)
+
+	wg.Wait()
+
+	assert.NoError(err1)
+	assert.NoError(err2)
+	assert.Equal(user2.Name, receivedMessage.OrgName)
+	assert.Equal(payload, receivedMessage.Payload)
+	assert.Equal(user1.Name, receivedMessage.DestName)
+
+	_, err2 = userClient2.SendDlcMessage(ctx2, message)
+
+	assert.Error(err2)
 }
 
 func getConnection(serverAddress string) (*grpc.ClientConn, error) {

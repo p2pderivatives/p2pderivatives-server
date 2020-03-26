@@ -39,6 +39,8 @@ func init() {
 		cli.NewUnregisterUserCmd(),
 		cli.NewGetUserListCmd(),
 		cli.NewLoginCmd(),
+		cli.NewSendMsgCmd(),
+		cli.NewReceiveDlcMsg(),
 	} {
 		cmd.Init()
 		flagSet := cmd.GetFlagSet()
