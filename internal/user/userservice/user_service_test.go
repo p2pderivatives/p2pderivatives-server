@@ -253,13 +253,61 @@ func TestService_ChangeUserPassword(t *testing.T) {
 
 	newPasswordUser, err := service.ChangeUserPassword(
 		ctx,
-		name,
-		oldPassword,
+		orgUser.ID,
 		newPassword,
+		oldPassword,
 	)
 
 	assert.NoError(err)
 	assert.NotEqual(orgUser, newPasswordUser)
+}
+
+func TestService_ChangeUserPassword_InvalidPassword_Fails(t *testing.T) {
+	assert := assert.New(t)
+	_, service := createRepoAndService()
+	ctx := context.Background()
+
+	const (
+		name        = "name1"
+		oldPassword = "oldP@ssw0rd"
+		newPassword = "test"
+	)
+	orgUser := usercommon.NewUser(name, oldPassword)
+	orgUser, _ = service.CreateUser(ctx, orgUser)
+
+	newPasswordUser, err := service.ChangeUserPassword(
+		ctx,
+		orgUser.ID,
+		newPassword,
+		orgUser.Password,
+	)
+
+	assert.Error(err)
+	assert.Nil(newPasswordUser)
+}
+
+func TestService_ChangeUserPassword_BadOldPassword_Fails(t *testing.T) {
+	assert := assert.New(t)
+	_, service := createRepoAndService()
+	ctx := context.Background()
+
+	const (
+		name        = "name1"
+		oldPassword = "oldP@ssw0rd"
+		newPassword = "newP@ssw0rd"
+	)
+	orgUser := usercommon.NewUser(name, oldPassword)
+	orgUser, _ = service.CreateUser(ctx, orgUser)
+
+	newPasswordUser, err := service.ChangeUserPassword(
+		ctx,
+		orgUser.ID,
+		newPassword,
+		"n0tTh3G00dPASS",
+	)
+
+	assert.Error(err)
+	assert.Nil(newPasswordUser)
 }
 
 func TestService_ResetUserPassword(t *testing.T) {

@@ -2,6 +2,7 @@ package authentication
 
 import (
 	"context"
+	"p2pderivatives-server/internal/common/contexts"
 	"p2pderivatives-server/internal/common/log"
 	"p2pderivatives-server/internal/common/servererror"
 	"p2pderivatives-server/internal/user/usercommon"
@@ -76,5 +77,19 @@ func (s *Controller) Logout(
 	}
 
 	logger.Info("Logout Success")
+	return &Empty{}, nil
+}
+
+// UpdatePassword updates the password of the requesting user.
+func (s *Controller) UpdatePassword(
+	ctx context.Context,
+	request *UpdatePasswordRequest) (*Empty, error) {
+	userID := contexts.GetUserID(ctx)
+
+	_, err := s.userService.ChangeUserPassword(ctx, userID, request.NewPassword, request.OldPassword)
+	if err != nil {
+		return nil, servererror.GetGrpcStatus(ctx, err).Err()
+	}
+
 	return &Empty{}, nil
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
+	"p2pderivatives-server/internal/common/contexts"
 	"p2pderivatives-server/internal/common/token"
 	"p2pderivatives-server/internal/user/usercommon"
 	"p2pderivatives-server/test"
@@ -21,11 +22,15 @@ const (
 	badPassword = "p@sw0rd"
 )
 
+var userID string
+
 func initService() (context.Context, *usercommon.Config, usercommon.ServiceIf) {
 	userConfig := usercommon.DefaultUserConfiguration()
 	ctx := context.Background()
 	userService := mock_userservice.NewServiceMock()
-	userService.CreateUser(ctx, usercommon.NewUser(name, password))
+	user := usercommon.NewUser(name, password)
+	userService.CreateUser(ctx, user)
+	userID = user.ID
 	tokenConfig := &token.Config{}
 	test.GetTestConfig().InitializeComponentConfig(tokenConfig)
 	token.Init(tokenConfig)
@@ -165,4 +170,47 @@ func TestAuthenticationLogout_WithIncorrectToken_NoError(t *testing.T) {
 	// Assert
 	assert.NoError(err)
 	assert.NotNil(response)
+}
+
+func TestChangeUserPassword_WithValidPassword_Success(t *testing.T) {
+	// Arrange
+	assert := assert.New(t)
+	ctx, config, service := initService()
+	controller := NewController(service, config)
+	ctx = contexts.SetUserID(ctx, userID)
+	newPassword := "P@ssw0rd"
+	updatePasswordRequest := UpdatePasswordRequest{
+		NewPassword: newPassword,
+		OldPassword: password,
+	}
+	loginRequest := LoginRequest{Name: name, Password: password}
+
+	// Act
+	_, err1 := controller.UpdatePassword(ctx, &updatePasswordRequest)
+	_, err2 := controller.Login(context.Background(), &loginRequest)
+	loginRequest.Password = newPassword
+	_, err3 := controller.Login(context.Background(), &loginRequest)
+
+	// Assert
+	assert.NoError(err1)
+	assert.Error(err2)
+	assert.NoError(err3)
+}
+
+func TestChangeUserPassword_WithInvalidPassword_Fails(t *testing.T) {
+	// Arrange
+	assert := assert.New(t)
+	ctx, config, service := initService()
+	controller := NewController(service, config)
+	ctx = contexts.SetUserID(ctx, userID)
+	newPassword := "Test"
+	updatePasswordRequest := UpdatePasswordRequest{
+		NewPassword: newPassword,
+	}
+
+	// Act
+	_, err := controller.UpdatePassword(ctx, &updatePasswordRequest)
+
+	// Assert
+	assert.Error(err)
 }
