@@ -11,10 +11,24 @@ import (
 
 var empty *Empty = &Empty{}
 
+type void struct{}
+
+var member void
+
+const (
+	ok    = iota
+	notOk = iota
+)
+
+type dlcMessageWithAck struct {
+	message *DlcMessage
+	ackChan chan int
+}
+
 // Controller represents the grpc server serving the user services.
 type Controller struct {
 	userService  usercommon.ServiceIf
-	userChannels map[string]*chan *UserNotice
+	userChannels map[string]map[chan *dlcMessageWithAck]void
 	channelLock  sync.RWMutex
 	config       *usercommon.Config
 }
@@ -23,7 +37,7 @@ type Controller struct {
 func NewController(
 	service usercommon.ServiceIf,
 	config *usercommon.Config) *Controller {
-	channels := make(map[string]*chan *UserNotice)
+	channels := make(map[string]map[chan *dlcMessageWithAck]void)
 	return &Controller{
 		userService:  service,
 		userChannels: channels,
@@ -34,8 +48,10 @@ func NewController(
 // Close cleans up the server resources.
 func (controller *Controller) Close() {
 	controller.channelLock.Lock()
-	for _, channel := range controller.userChannels {
-		close(*channel)
+	for _, channels := range controller.userChannels {
+		for channel := range channels {
+			close(channel)
+		}
 	}
 	controller.channelLock.Unlock()
 }
@@ -61,8 +77,6 @@ func (controller *Controller) RegisterUser(
 		return nil, servererror.GetGrpcStatus(ctx, err).Err()
 	}
 
-	controller.userStatusUpdater(userModel.Name, UserStatus_REGISTERED)
-
 	response := UserRegisterResponse{
 		Id:   createdUser.ID,
 		Name: createdUser.Name,
@@ -87,7 +101,6 @@ func (controller *Controller) UnregisterUser(
 		return nil, servererror.GetGrpcStatus(ctx, err).Err()
 	}
 
-	controller.userStatusUpdater(user.Name, UserStatus_UNREGISTERED)
 	return empty, nil
 }
 
@@ -108,11 +121,11 @@ func (controller *Controller) GetUserList(
 	return err
 }
 
-// GetUserStatuses streams a list of all connected user and notifies when users
-// connect, disconnect, register or unregister from the system.
-func (controller *Controller) GetUserStatuses(
+// ReceiveDlcMessages enables receiving messages from other users pertaining
+// to the DLC protocol.
+func (controller *Controller) ReceiveDlcMessages(
 	empty *Empty,
-	stream User_GetUserStatusesServer) error {
+	stream User_ReceiveDlcMessagesServer) error {
 	userID := contexts.GetUserID(stream.Context())
 	user, err := controller.userService.FindFirstUser(
 		stream.Context(), &usercommon.User{ID: userID}, nil)
@@ -121,75 +134,104 @@ func (controller *Controller) GetUserStatuses(
 		return servererror.GetGrpcStatus(stream.Context(), err).Err()
 	}
 
-	// Add channel first so that if two user connect concurrently they will see
-	// each others.
-	userChannel := make(chan *UserNotice, 10)
-	controller.addUserChannel(userChannel, user.ID, user.Name)
+	dlcChannel := make(chan *dlcMessageWithAck, 10)
+	controller.addUserChannel(dlcChannel, user.Name)
 
-	userIDs := controller.getConnectedUsers()
-
-	// Notify the newly connected user about already connected users.
-	for _, curUserID := range userIDs {
-		// Skip the new userusercommon.
-		if curUserID == user.ID {
+	for messageWithAck := range dlcChannel {
+		message := messageWithAck.message
+		ackChannel := messageWithAck.ackChan
+		if message.OrgName == user.Name {
 			continue
 		}
 
-		connectedUser, err := controller.userService.FindFirstUser(
-			stream.Context(),
-			&usercommon.User{
-				ID: curUserID,
-			}, nil)
+		err := stream.Send(message)
 
 		if err != nil {
-			// TODO(tibo): add log here
-			continue
-		}
-
-		err = controller.sendNotice(
-			user,
-			connectedUser,
-			UserStatus_CONNECTED,
-			stream)
-
-		if err != nil {
+			ackChannel <- notOk
+			controller.removeUserChannel(user, dlcChannel)
 			return err
 		}
-	}
 
-	for notice := range userChannel {
-		if notice.Name == user.Name {
-			continue
-		}
-		err := stream.Send(notice)
-
-		if err != nil {
-			controller.removeUserChannel(user)
-			return err
-		}
+		ackChannel <- ok
 	}
 
 	return nil
+
 }
 
-func (controller *Controller) sendNotice(
-	userToNotify *usercommon.User,
-	updatedUser *usercommon.User,
-	status UserStatus,
-	stream User_GetUserStatusesServer) error {
+// SendDlcMessage enables sending a message to a user
+func (controller *Controller) SendDlcMessage(
+	ctx context.Context, message *DlcMessage) (*Empty, error) {
 
-	notice := UserNotice{
-		Name:   updatedUser.Name,
-		Status: status,
-	}
+	userID := contexts.GetUserID(ctx)
 
-	err := stream.Send(&notice)
+	user, err := controller.userService.FindFirstUser(
+		ctx, &usercommon.User{ID: userID}, nil)
 
 	if err != nil {
-		controller.removeUserChannel(userToNotify)
+		return nil, servererror.GetGrpcStatus(ctx, err).Err()
 	}
 
-	return err
+	message.OrgName = user.Name
+
+	destUserName := message.DestName
+
+	channels, err := controller.getUserChannels(destUserName)
+
+	if err != nil {
+		return nil, err
+	}
+
+	nbChannels := 0
+	ackChannel := make(chan int, len(channels))
+
+	for channel := range channels {
+		nbChannels++
+		channel <- &dlcMessageWithAck{message: message, ackChan: ackChannel}
+	}
+
+	hasOk := false
+
+	for nbChannels > 0 {
+		ack := <-ackChannel
+		hasOk = hasOk || ack == ok
+		nbChannels--
+	}
+
+	if !hasOk {
+		return nil, servererror.NewUnavailableStatus(
+			"Peer connection returned error.").Err()
+	}
+
+	return empty, nil
+}
+
+// GetConnectedUsers returns a list of connected users.
+func (controller *Controller) GetConnectedUsers(
+	empty *Empty,
+	stream User_GetConnectedUsersServer) error {
+	userID := contexts.GetUserID(stream.Context())
+
+	user, err := controller.userService.FindFirstUser(
+		stream.Context(), &usercommon.User{ID: userID}, nil)
+
+	if err != nil {
+		return servererror.GetGrpcStatus(stream.Context(), err).Err()
+	}
+
+	userNames := controller.getConnectedUsers()
+
+	for _, userName := range userNames {
+
+		// Skip requesting user
+		if userName == user.Name {
+			continue
+		}
+
+		stream.Send(&UserInfo{Name: userName})
+	}
+
+	return nil
 }
 
 func userModelToInfo(user *usercommon.User) *UserInfo {
@@ -200,45 +242,44 @@ func userModelToInfo(user *usercommon.User) *UserInfo {
 	return &userInfo
 }
 
-func (controller *Controller) userStatusUpdater(
-	name string, status UserStatus) {
-	notice := UserNotice{
-		Name:   name,
-		Status: status,
-	}
+func (controller *Controller) getUserChannels(
+	name string) (map[chan *dlcMessageWithAck]void, error) {
 	controller.channelLock.RLock()
 	defer controller.channelLock.RUnlock()
-	for _, channel := range controller.userChannels {
-		*channel <- &notice
+	if channels, ok := controller.userChannels[name]; ok {
+		return channels, nil
 	}
+
+	return nil, servererror.NewNotFoundStatus("No such user").Err()
 }
 
 func (controller *Controller) addUserChannel(
-	channel chan *UserNotice, id string, name string) {
+	channel chan *dlcMessageWithAck, name string) {
 	controller.channelLock.Lock()
-	controller.userChannels[id] = &channel
+	if controller.userChannels[name] == nil {
+		controller.userChannels[name] = make(map[chan *dlcMessageWithAck]void)
+	}
+	controller.userChannels[name][channel] = member
 	controller.channelLock.Unlock()
-	controller.userStatusUpdater(name, UserStatus_CONNECTED)
 }
 
 func (controller *Controller) removeUserChannel(
-	user *usercommon.User) {
+	user *usercommon.User, channel chan *dlcMessageWithAck) {
 	controller.channelLock.Lock()
-	delete(controller.userChannels, user.ID)
+	delete(controller.userChannels[user.Name], channel)
 	controller.channelLock.Unlock()
-	controller.userStatusUpdater(user.Name, UserStatus_DISCONNECTED)
 }
 
 func (controller *Controller) getConnectedUsers() []string {
 	controller.channelLock.RLock()
 	defer controller.channelLock.RUnlock()
 	nbUsers := len(controller.userChannels)
-	userIds := make([]string, nbUsers)
+	userNames := make([]string, nbUsers)
 
-	for userID := range controller.userChannels {
+	for userName := range controller.userChannels {
 		nbUsers--
-		userIds[nbUsers] = userID
+		userNames[nbUsers] = userName
 	}
 
-	return userIds
+	return userNames
 }

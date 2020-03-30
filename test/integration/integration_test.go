@@ -75,13 +75,13 @@ func TestIntegration(t *testing.T) {
 	assertClientList(
 		assert, userClient1, accessToken1, []string{user1.Name, user2.Name})
 
-	assertUserStatuses(assert, userClient1, userClient2, user1, user2, accessToken1, accessToken2)
+	assertMessaging(
+		assert, userClient1, userClient2, user1, user2, accessToken1, accessToken2)
 
 	assertUserUnregister(assert, userClient2, user2, accessToken2)
 
 	assertClientList(
 		assert, userClient1, accessToken1, []string{user1.Name})
-
 }
 
 func assertUserRegistration(
@@ -181,7 +181,7 @@ func assertClientList(
 	}
 }
 
-func assertUserStatuses(
+func assertMessaging(
 	assert *assert.Assertions,
 	userClient1 usercontroller.UserClient,
 	userClient2 usercontroller.UserClient,
@@ -189,70 +189,83 @@ func assertUserStatuses(
 	user2 *usercommon.User,
 	accessToken1 string,
 	accessToken2 string) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx1 := metadata.AppendToOutgoingContext(
+		context.Background(), token.MetaKeyAuthentication, accessToken1)
 
-	var userNotices1 []*usercontroller.UserNotice
-	var userNotices2 []*usercontroller.UserNotice
-	var err1 error
-	var err2 error
+	ctx2 := metadata.AppendToOutgoingContext(
+		context.Background(), token.MetaKeyAuthentication, accessToken2)
+
+	payload := []byte("Hello")
+	message := &usercontroller.DlcMessage{Payload: payload, DestName: user1.Name}
+	var receivedMessage *usercontroller.DlcMessage
+	var err1, err2 error
+
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(1)
 
 	go func() {
-		userNotices1, err1 = getUserStatuses(ctx, userClient1, accessToken1, &wg)
-	}()
-	go func() {
-		userNotices2, err2 = getUserStatuses(ctx, userClient2, accessToken2, &wg)
-	}()
+		var stream usercontroller.User_ReceiveDlcMessagesClient
+		ctx1, cancel := context.WithCancel(ctx1)
+		stream, err1 = userClient1.ReceiveDlcMessages(ctx1, &usercontroller.Empty{})
 
-	time.Sleep(5 * time.Second)
-	cancel()
-	wg.Wait()
-
-	grpcStatus1, ok1 := status.FromError(err1)
-	grpcStatus2, ok2 := status.FromError(err2)
-
-	assert.True(ok1)
-	assert.True(ok2)
-	assert.Equal(codes.Canceled, grpcStatus1.Code())
-	assert.Equal(codes.Canceled, grpcStatus2.Code())
-
-	assert.Contains(userNotices1, &usercontroller.UserNotice{
-		Name:   user2.Name,
-		Status: usercontroller.UserStatus_CONNECTED,
-	})
-
-	assert.Contains(userNotices2, &usercontroller.UserNotice{
-		Name:   user1.Name,
-		Status: usercontroller.UserStatus_CONNECTED,
-	})
-}
-
-func getUserStatuses(
-	ctx context.Context,
-	userClient usercontroller.UserClient,
-	accessToken string,
-	wg *sync.WaitGroup) ([]*usercontroller.UserNotice, error) {
-	ctx = metadata.AppendToOutgoingContext(
-		ctx, token.MetaKeyAuthentication, accessToken)
-	stream, err := userClient.GetUserStatuses(ctx, &usercontroller.Empty{})
-	if err != nil {
-		wg.Done()
-		return nil, err
-	}
-
-	notices := make([]*usercontroller.UserNotice, 0)
-
-	for {
-		notice, err := stream.Recv()
-
-		if err != nil {
+		if err1 != nil {
 			wg.Done()
-			return notices, err
+			cancel()
+			return
 		}
 
-		notices = append(notices, notice)
+		wg.Done()
+
+		receivedMessage, err1 = stream.Recv()
+		cancel()
+		wg.Done()
+	}()
+
+	time.Sleep(time.Millisecond * 5)
+	wg.Wait()
+
+	assert.NoError(err1)
+
+	if err1 != nil {
+		return
 	}
+
+	wg.Add(1)
+
+	stream, err3 := userClient1.GetConnectedUsers(ctx2, &usercontroller.Empty{})
+	assert.NoError(err3)
+	userNames := make([]string, 0)
+
+	for {
+		userInfo, err := stream.Recv()
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			log.Fatalf("%v.GetUserList(_) = _, %v", userClient2, err)
+		}
+
+		userNames = append(userNames, userInfo.Name)
+	}
+
+	assert.Len(userNames, 1)
+	assert.Equal(user1.Name, userNames[0])
+
+	_, err2 = userClient2.SendDlcMessage(ctx2, message)
+
+	wg.Wait()
+
+	assert.NoError(err1)
+	assert.NoError(err2)
+	assert.Equal(user2.Name, receivedMessage.OrgName)
+	assert.Equal(payload, receivedMessage.Payload)
+	assert.Equal(user1.Name, receivedMessage.DestName)
+
+	_, err2 = userClient2.SendDlcMessage(ctx2, message)
+
+	assert.Error(err2)
 }
 
 func getConnection(serverAddress string) (*grpc.ClientConn, error) {

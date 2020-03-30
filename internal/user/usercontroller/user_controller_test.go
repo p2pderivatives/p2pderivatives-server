@@ -2,7 +2,6 @@ package usercontroller_test
 
 import (
 	"context"
-	"errors"
 	"strconv"
 	"strings"
 	"sync"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/pkg/errors"
 
 	"github.com/stretchr/testify/assert"
 
@@ -143,201 +143,204 @@ func TestUnregisterUser_WithNonRegisteredUser_ReturnsNotFoundError(t *testing.T)
 	assert.Equal(codes.NotFound, st.Code())
 }
 
-func TestGetUserStatuses_NotifiesUserRegistered(t *testing.T) {
-	model := createUser()
-	expectedNotice := usercontroller.UserNotice{
-		Name:   model.Name,
-		Status: usercontroller.UserStatus_REGISTERED,
-	}
-
-	setup := func(controller *usercontroller.Controller, ctx context.Context) {}
-
-	action := func(
-		controller *usercontroller.Controller,
-		baseUser *usercommon.User,
-		mockCtrl *gomock.Controller,
-		otherMockStream *mock_usercontroller.MockUser_GetUserStatusesServer,
-		ctx context.Context,
-		wg *sync.WaitGroup) {
-		// Let time to the other client to connect.
-		time.Sleep(time.Millisecond * 5)
-		controller.RegisterUser(ctx, createUserRegisterRequest(model))
-	}
-
-	userNoticeTestHelper(t, &expectedNotice, setup, action)
-}
-
-func TestGetUserStatuses_NotifiesUserConnected(t *testing.T) {
-	model := createUser()
-	expectedNotice := usercontroller.UserNotice{
-		Name:   model.Name,
-		Status: usercontroller.UserStatus_CONNECTED,
-	}
-
-	setup := func(controller *usercontroller.Controller, ctx context.Context) {
-		response, _ := controller.RegisterUser(ctx, createUserRegisterRequest(model))
-		model.ID = response.Id
-	}
-
-	action := func(
-		controller *usercontroller.Controller,
-		baseUser *usercommon.User,
-		mockCtrl *gomock.Controller,
-		otherMockStream *mock_usercontroller.MockUser_GetUserStatusesServer,
-		ctx context.Context,
-		wg *sync.WaitGroup) {
-		otherExpectedNotice := usercontroller.UserNotice{
-			Name:   baseUser.Name,
-			Status: usercontroller.UserStatus_CONNECTED,
-		}
-		wg.Add(1)
-		mockStream := mock_usercontroller.NewMockUser_GetUserStatusesServer(mockCtrl)
-		ctx = contexts.SetUserID(ctx, model.ID)
-		mockStream.EXPECT().Context().Return(ctx).AnyTimes()
-		mockStream.EXPECT().Send(&otherExpectedNotice).Times(1).Return(nil).Do(
-			func(notice *usercontroller.UserNotice) {
-				wg.Done()
-			},
-		)
-		go controller.GetUserStatuses(&usercontroller.Empty{}, mockStream)
-	}
-
-	userNoticeTestHelper(t, &expectedNotice, setup, action)
-}
-
-func TestGetUserStatuses_NotifiesUserDisconnected(t *testing.T) {
-
-	model := createUser()
-	expectedNotice := usercontroller.UserNotice{
-		Name:   model.Name,
-		Status: usercontroller.UserStatus_DISCONNECTED,
-	}
-
-	setup := func(controller *usercontroller.Controller, ctx context.Context) {
-		response, _ := controller.RegisterUser(ctx, createUserRegisterRequest(model))
-		model.ID = response.Id
-	}
-
-	action := func(
-		controller *usercontroller.Controller,
-		baseUser *usercommon.User,
-		mockCtrl *gomock.Controller,
-		otherMockStream *mock_usercontroller.MockUser_GetUserStatusesServer,
-		ctx context.Context,
-		wg *sync.WaitGroup) {
-		var thisWg sync.WaitGroup
-		thisWg.Add(1)
-		otherExpectedNotice := usercontroller.UserNotice{
-			Name:   baseUser.Name,
-			Status: usercontroller.UserStatus_CONNECTED,
-		}
-		thisConnectionExpectedNotice := usercontroller.UserNotice{
-			Name:   model.Name,
-			Status: usercontroller.UserStatus_CONNECTED,
-		}
-		wg.Add(1)
-		ctx = contexts.SetUserID(ctx, model.ID)
-		otherMockStream.EXPECT().Send(&thisConnectionExpectedNotice).
-			Times(1).Return(nil).Do(
-			func(notice *usercontroller.UserNotice) {
-				t.Log("Received this notice.")
-				thisWg.Done()
-			})
-		mockStream := mock_usercontroller.NewMockUser_GetUserStatusesServer(mockCtrl)
-		mockStream.EXPECT().Context().Return(ctx).AnyTimes()
-		mockStream.EXPECT().Send(&otherExpectedNotice).
-			Times(1).Return(errors.New("force disconnect")).Do(
-			func(notice *usercontroller.UserNotice) {
-				t.Log("Waiting for other notice.")
-				thisWg.Wait()
-				t.Log("Got other notice.")
-				wg.Done()
-			})
-		go controller.GetUserStatuses(&usercontroller.Empty{}, mockStream)
-	}
-
-	userNoticeTestHelper(t, &expectedNotice, setup, action)
-}
-
-func TestGetUserStatuses_NotifiesUserUnregistered(t *testing.T) {
-
-	model := createUser()
-	expectedNotice := usercontroller.UserNotice{
-		Name:   model.Name,
-		Status: usercontroller.UserStatus_UNREGISTERED,
-	}
-
-	setup := func(controller *usercontroller.Controller, ctx context.Context) {
-	}
-
-	action := func(
-		controller *usercontroller.Controller,
-		baseUser *usercommon.User,
-		mockCtrl *gomock.Controller,
-		otherMockStream *mock_usercontroller.MockUser_GetUserStatusesServer,
-		ctx context.Context,
-		wg *sync.WaitGroup) {
-		// Let time to the other client to connect.
-		time.Sleep(time.Millisecond * 5)
-		var thisWg sync.WaitGroup
-		thisWg.Add(1)
-		thisRegisterExpectedNotice := usercontroller.UserNotice{
-			Name:   model.Name,
-			Status: usercontroller.UserStatus_REGISTERED,
-		}
-		otherMockStream.EXPECT().Send(&thisRegisterExpectedNotice).Times(1).Do(
-			func(notice *usercontroller.UserNotice) {
-				thisWg.Done()
-			},
-		)
-		response, _ := controller.RegisterUser(ctx, createUserRegisterRequest(model))
-		model.ID = response.Id
-		thisWg.Wait()
-		request := usercontroller.UnregisterUserRequest{}
-		ctx = contexts.SetUserID(ctx, model.ID)
-		controller.UnregisterUser(ctx, &request)
-	}
-
-	userNoticeTestHelper(t, &expectedNotice, setup, action)
-}
-
-func userNoticeTestHelper(
-	t *testing.T,
-	expectedNotice *usercontroller.UserNotice,
-	setup func(controller *usercontroller.Controller, ctx context.Context),
-	action func(
-		controller *usercontroller.Controller,
-		baseUser *usercommon.User,
-		mockCtrl *gomock.Controller,
-		otherMockStream *mock_usercontroller.MockUser_GetUserStatusesServer,
-		ctx context.Context,
-		wg *sync.WaitGroup)) {
-
-	// Arrange
+func TestSendReceive_MessageIsReceived(t *testing.T) {
+	controller := createController()
 	var wg sync.WaitGroup
 	wg.Add(1)
-	controller := createController()
 	defer controller.Close()
-	sharedContext := context.Background()
-	setup(controller, sharedContext)
-	model := createUser()
+	modelUser1 := createUser()
+	modelUser2 := createUser()
+	ctx := context.Background()
+	message := &usercontroller.DlcMessage{
+		DestName: modelUser1.Name,
+		Payload:  []byte("Hello"),
+		OrgName:  modelUser2.Name,
+	}
 	mockCtrl := gomock.NewController(t)
-	mockStream := mock_usercontroller.NewMockUser_GetUserStatusesServer(mockCtrl)
-	mockStream.EXPECT().Send(expectedNotice).Return(nil).Times(1).Do(
-		func(notice *usercontroller.UserNotice) {
+	mockStream := mock_usercontroller.NewMockUser_ReceiveDlcMessagesServer(mockCtrl)
+	mockStream.EXPECT().Send(message).Times(1).Do(
+		func(message *usercontroller.DlcMessage) {
 			wg.Done()
 		})
-	response, _ := controller.RegisterUser(sharedContext, createUserRegisterRequest(model))
-	id := response.Id
-	ctx := contexts.SetUserID(sharedContext, id)
-	mockStream.EXPECT().Context().Return(ctx).AnyTimes()
+	response, _ := controller.RegisterUser(
+		ctx, createUserRegisterRequest(modelUser1))
+	id1 := response.Id
+	ctx1 := contexts.SetUserID(ctx, id1)
+	mockStream.EXPECT().Context().Return(ctx1).AnyTimes()
+	response, _ = controller.RegisterUser(
+		ctx, createUserRegisterRequest(modelUser2))
+	id2 := response.Id
+	ctx2 := contexts.SetUserID(ctx, id2)
 
 	// Act
-	go controller.GetUserStatuses(&usercontroller.Empty{}, mockStream)
-	action(controller, model, mockCtrl, mockStream, sharedContext, &wg)
+	go controller.ReceiveDlcMessages(&usercontroller.Empty{}, mockStream)
+	time.Sleep(time.Millisecond * 5)
+	_, err := controller.SendDlcMessage(ctx2, message)
 
 	wg.Wait()
 
 	// Assert
+	assert.NoError(t, err)
+	mockCtrl.Finish()
+}
+
+func TestSendMessage_NoReceiver_Error(t *testing.T) {
+	controller := createController()
+	defer controller.Close()
+	modelUser1 := createUser()
+	modelUser2 := createUser()
+	ctx := context.Background()
+	message := &usercontroller.DlcMessage{
+		DestName: modelUser1.Name,
+		Payload:  []byte("Hello"),
+		OrgName:  modelUser2.Name,
+	}
+	response, _ := controller.RegisterUser(
+		ctx, createUserRegisterRequest(modelUser1))
+	response, _ = controller.RegisterUser(
+		ctx, createUserRegisterRequest(modelUser2))
+	id2 := response.Id
+	ctx2 := contexts.SetUserID(ctx, id2)
+
+	// Act
+	_, err := controller.SendDlcMessage(ctx2, message)
+
+	// Assert
+	assert.Error(t, err)
+}
+
+func TestSendReceive_MultipleReceiver_MessageIsReceived(t *testing.T) {
+	controller := createController()
+	var wg sync.WaitGroup
+	wg.Add(2)
+	defer controller.Close()
+	modelUser1 := createUser()
+	modelUser2 := createUser()
+	ctx := context.Background()
+	message := &usercontroller.DlcMessage{
+		DestName: modelUser1.Name,
+		Payload:  []byte("Hello"),
+		OrgName:  modelUser2.Name,
+	}
+	mockCtrl := gomock.NewController(t)
+	mockStream1 := mock_usercontroller.NewMockUser_ReceiveDlcMessagesServer(mockCtrl)
+	mockStream1.EXPECT().Send(message).Times(1).Do(
+		func(message *usercontroller.DlcMessage) {
+			wg.Done()
+		})
+	mockStream2 := mock_usercontroller.NewMockUser_ReceiveDlcMessagesServer(mockCtrl)
+	mockStream2.EXPECT().Send(message).Times(1).Do(
+		func(message *usercontroller.DlcMessage) {
+			wg.Done()
+		})
+	response, _ := controller.RegisterUser(
+		ctx, createUserRegisterRequest(modelUser1))
+	id1 := response.Id
+	ctx1 := contexts.SetUserID(ctx, id1)
+	mockStream1.EXPECT().Context().Return(ctx1).AnyTimes()
+	mockStream2.EXPECT().Context().Return(ctx1).AnyTimes()
+	response, _ = controller.RegisterUser(
+		ctx, createUserRegisterRequest(modelUser2))
+	id2 := response.Id
+	ctx2 := contexts.SetUserID(ctx, id2)
+
+	// Act
+	go controller.ReceiveDlcMessages(&usercontroller.Empty{}, mockStream1)
+	go controller.ReceiveDlcMessages(&usercontroller.Empty{}, mockStream2)
+	time.Sleep(time.Millisecond * 5)
+	_, err := controller.SendDlcMessage(ctx2, message)
+
+	wg.Wait()
+
+	// Assert
+	assert.NoError(t, err)
+	mockCtrl.Finish()
+}
+
+func TestSendMessage_ToClosedStream_Error(t *testing.T) {
+	controller := createController()
+	var wg sync.WaitGroup
+	wg.Add(1)
+	defer controller.Close()
+	modelUser1 := createUser()
+	modelUser2 := createUser()
+	ctx := context.Background()
+	message := &usercontroller.DlcMessage{
+		DestName: modelUser1.Name,
+		Payload:  []byte("Hello"),
+		OrgName:  modelUser2.Name,
+	}
+	mockCtrl := gomock.NewController(t)
+	mockStream := mock_usercontroller.NewMockUser_ReceiveDlcMessagesServer(mockCtrl)
+	mockStream.EXPECT().Send(message).Times(1).DoAndReturn(
+		func(message *usercontroller.DlcMessage) error {
+			wg.Done()
+			return errors.New("Error")
+		})
+	response, _ := controller.RegisterUser(
+		ctx, createUserRegisterRequest(modelUser1))
+	id1 := response.Id
+	ctx1 := contexts.SetUserID(ctx, id1)
+	mockStream.EXPECT().Context().Return(ctx1).AnyTimes()
+	response, _ = controller.RegisterUser(
+		ctx, createUserRegisterRequest(modelUser2))
+	id2 := response.Id
+	ctx2 := contexts.SetUserID(ctx, id2)
+
+	// Act
+	go controller.ReceiveDlcMessages(&usercontroller.Empty{}, mockStream)
+	time.Sleep(time.Millisecond * 5)
+	_, err := controller.SendDlcMessage(ctx2, message)
+
+	wg.Wait()
+
+	// Assert
+	assert.Error(t, err)
+	mockCtrl.Finish()
+}
+
+func TestGetConnectedUsers_ReturnsConnectedUsers(t *testing.T) {
+	controller := createController()
+	var wg sync.WaitGroup
+	wg.Add(2)
+	defer controller.Close()
+	modelUser1 := createUser()
+	modelUser2 := createUser()
+	modelUser3 := createUser()
+	ctx := context.Background()
+	mockCtrl := gomock.NewController(t)
+	mockStream1 := mock_usercontroller.NewMockUser_ReceiveDlcMessagesServer(mockCtrl)
+	mockStream2 := mock_usercontroller.NewMockUser_ReceiveDlcMessagesServer(mockCtrl)
+	mockStream3 := mock_usercontroller.NewMockUser_GetConnectedUsersServer(mockCtrl)
+	response, _ := controller.RegisterUser(
+		ctx, createUserRegisterRequest(modelUser1))
+	id1 := response.Id
+	ctx1 := contexts.SetUserID(ctx, id1)
+	mockStream1.EXPECT().Context().Return(ctx1).AnyTimes()
+	response, _ = controller.RegisterUser(
+		ctx, createUserRegisterRequest(modelUser2))
+	id2 := response.Id
+	ctx2 := contexts.SetUserID(ctx, id2)
+	mockStream2.EXPECT().Context().Return(ctx2).AnyTimes()
+	response, _ = controller.RegisterUser(
+		ctx, createUserRegisterRequest(modelUser3))
+	id3 := response.Id
+	ctx3 := contexts.SetUserID(ctx, id3)
+	mockStream3.EXPECT().Context().Return(ctx3).AnyTimes()
+
+	userInfo1 := &usercontroller.UserInfo{Name: modelUser1.Name}
+	userInfo2 := &usercontroller.UserInfo{Name: modelUser2.Name}
+
+	mockStream3.EXPECT().Send(userInfo1).Times(1)
+	mockStream3.EXPECT().Send(userInfo2).Times(1)
+
+	// Act
+	go controller.ReceiveDlcMessages(&usercontroller.Empty{}, mockStream1)
+	go controller.ReceiveDlcMessages(&usercontroller.Empty{}, mockStream2)
+	time.Sleep(time.Millisecond * 5)
+	err := controller.GetConnectedUsers(&usercontroller.Empty{}, mockStream3)
+
+	// Assert
+	assert.NoError(t, err)
 	mockCtrl.Finish()
 }
