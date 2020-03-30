@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"p2pderivatives-server/internal/user/usercommon"
+	"p2pderivatives-server/internal/user/userservice"
 	"p2pderivatives-server/test/mocks/mock_userrepository"
 )
 
@@ -89,8 +90,24 @@ func (service *ServiceMock) FindUserByCondition(
 
 // ChangeUserPassword changes a user password.
 func (service *ServiceMock) ChangeUserPassword(
-	ctx context.Context, account, oldPassword, newPassword string) (*usercommon.User, error) {
-	panic("Not implemented")
+	ctx context.Context, userID, newPassword, oldPassword string) (*usercommon.User, error) {
+	userModel, err := service.FindFirstUser(ctx, &usercommon.User{ID: userID}, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if userModel.Password != oldPassword || !userservice.VerifyNewPassword(newPassword) {
+		return nil, errors.New("Invalid password")
+	}
+
+	userModel.Password = newPassword
+
+	err = service.repo.UpdateUser(ctx, userModel)
+	if err != nil {
+		return nil, err
+	}
+
+	return userModel, nil
 }
 
 // RefreshUserToken refreshes a user token.

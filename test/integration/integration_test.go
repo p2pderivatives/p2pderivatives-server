@@ -78,6 +78,8 @@ func TestIntegration(t *testing.T) {
 	assertMessaging(
 		assert, userClient1, userClient2, user1, user2, accessToken1, accessToken2)
 
+	assertUpdatePassword(assert, authClient1, accessToken1)
+
 	assertUserUnregister(assert, userClient2, user2, accessToken2)
 
 	assertClientList(
@@ -266,6 +268,33 @@ func assertMessaging(
 	_, err2 = userClient2.SendDlcMessage(ctx2, message)
 
 	assert.Error(err2)
+}
+
+func assertUpdatePassword(
+	assert *assert.Assertions, authClient authentication.AuthenticationClient, accessToken string) {
+
+	ctx := metadata.AppendToOutgoingContext(
+		context.Background(), token.MetaKeyAuthentication, accessToken)
+	newPassword := "P@ssw0rd"
+	request := &authentication.UpdatePasswordRequest{
+		NewPassword: newPassword,
+		OldPassword: user1.Password,
+	}
+	_, err := authClient.UpdatePassword(ctx, request)
+
+	assert.NoError(err)
+
+	loginRequest := &authentication.LoginRequest{Name: user1.Name, Password: newPassword}
+
+	_, err = authClient.Login(context.Background(), loginRequest)
+
+	assert.NoError(err)
+
+	loginRequest.Password = user1.Password
+
+	_, err = authClient.Login(context.Background(), loginRequest)
+
+	assert.Error(err)
 }
 
 func getConnection(serverAddress string) (*grpc.ClientConn, error) {

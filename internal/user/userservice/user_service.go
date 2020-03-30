@@ -109,23 +109,22 @@ func (s *Service) UpdateUser(ctx context.Context, condition *usercommon.User) (*
 // ChangeUserPassword changes the user password and returns the new user
 func (s *Service) ChangeUserPassword(
 	ctx context.Context,
-	name string,
-	oldPassword string,
+	userID string,
 	newPassword string,
+	oldPassword string,
 ) (*usercommon.User, error) {
-	targetUser, err := s.FindFirstUserByName(ctx, name)
+	targetUser, err := s.FindFirstUser(ctx, &usercommon.User{ID: userID}, nil)
 	if err != nil {
 		// Use the same message when returning different type of errors on
 		// password change.
 		return nil, s.CreateServiceError(ctx, servererror.InvalidArguments, "Failed to update user password", err)
 	}
-	isPasswordValid := s.isPasswordValid(oldPassword, targetUser.Password)
-	if !isPasswordValid {
+	if !s.isPasswordValid(oldPassword, targetUser.Password) {
 		// Use the same message when returning different type of errors on
 		// password change.
 		return nil, s.CreateServiceError(ctx, servererror.InvalidArguments, "Failed to update user password", nil)
 	}
-	if !verifyNewPassword(newPassword) {
+	if !VerifyNewPassword(newPassword) {
 		// Use the same message when returning different type of errors on
 		// password change.
 		return nil, s.CreateServiceError(ctx, servererror.InvalidArguments, "Failed to update user password", nil)

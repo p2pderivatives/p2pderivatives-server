@@ -16,7 +16,7 @@ type ServiceIf interface {
 	DeleteUser(ctx context.Context, condition *User) error
 	AuthenticateUser(ctx context.Context, account, password string) (*User, *TokenInfo, error)
 	FindUserByCondition(ctx context.Context, condition *Condition) ([]User, error)
-	ChangeUserPassword(ctx context.Context, account, oldPassword, newPassword string) (*User, error)
+	ChangeUserPassword(ctx context.Context, userID, newPassword, oldPassword string) (*User, error)
 	RefreshUserToken(ctx context.Context, refreshToken string) (*TokenInfo, error)
 	RevokeRefreshToken(ctx context.Context, refreshToken string) error
 }
