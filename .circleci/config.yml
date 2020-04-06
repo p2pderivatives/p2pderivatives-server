@@ -3,6 +3,11 @@ jobs:
   build:
     docker:
       - image: circleci/golang:1.14
+      - image: postgres:12.2
+        environment:
+          - POSTGRES_USER=postgres
+          - POSTGRES_PASSWORD=1234
+          - POSTGRES_DB=db
     environment:
      ARTIFACTS: /tmp/artifacts
     steps:
@@ -15,6 +20,9 @@ jobs:
           git submodule update --init --recursive
       - run: go get github.com/jstemmer/go-junit-report
       - run:
+          name: Waiting for Postgres to be ready
+          command: ./scripts/wait_for_connection.sh localhost 5432
+      - run:
          name: Run unit tests
          command: |
           ./scripts/install_protoc.sh
@@ -25,6 +33,7 @@ jobs:
           mv coverage.html $ARTIFACTS/coverage.html
           cat unit_tests.out | go-junit-report > $ARTIFACTS/unit_tests.xml
           mkdir -p tmp
+          export P2PD_DATABASE_CONNECTIONPARAMS="sslmode=disable"
           make -B run-server-local &
           sleep 5
           go test -tags=integration_test ./test/integration/integration_test.go
