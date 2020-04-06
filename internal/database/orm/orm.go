@@ -1,6 +1,9 @@
 package orm
 
 import (
+	"fmt"
+	"time"
+
 	"reflect"
 	"unicode"
 
@@ -8,7 +11,8 @@ import (
 
 	"github.com/jinzhu/gorm"
 
-	// Needed for using sqlite
+	// Drivers for postgres and sql
+	_ "github.com/jinzhu/gorm/dialects/postgres"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -20,13 +24,13 @@ const NoLimit = -1
 
 // ORM represent an Object Relational Mapper instance.
 type ORM struct {
-	config      *Config
-	log         *log.Log
-	dbFilePath  string
-	enableLog   bool
-	logger      *logrus.Logger
-	initialized bool
-	db          *gorm.DB
+	config        *Config
+	log           *log.Log
+	connectionStr string
+	enableLog     bool
+	logger        *logrus.Logger
+	initialized   bool
+	db            *gorm.DB
 }
 
 // NewORM creates a new ORM structure with the given parameters.
@@ -50,14 +54,30 @@ func (o *ORM) Initialize() error {
 
 	enableLog := o.config.EnableLogging
 
-	o.dbFilePath = o.config.DbFilePath
-
 	o.enableLog = enableLog
 	o.logger = o.log.Logger
 
-	opened, err := gorm.Open("sqlite3", o.dbFilePath)
+	var databaseType string
+
+	if o.config.InMemory {
+		databaseType = "sqlite3"
+		o.connectionStr = ":memory:"
+		o.log.Logger.Info("InMemory flag detected : Using Sqlite Inmemory DB")
+	} else {
+		databaseType = "postgres"
+		o.connectionStr = fmt.Sprintf(
+			"host=%s port=%s dbname=%s user=%s password=%s %s",
+			o.config.Host,
+			o.config.Port,
+			o.config.DbName,
+			o.config.DbUser,
+			o.config.DbPassword,
+			o.config.ConnectionParams)
+	}
+
+	opened, err := gorm.Open(databaseType, o.connectionStr)
 	if err != nil {
-		o.log.Logger.Error("Could not open database.")
+		o.log.Logger.Error(err, "Could not open database.")
 		return errors.Wrap(err, "failed to open database")
 	}
 
@@ -65,7 +85,7 @@ func (o *ORM) Initialize() error {
 	opened.LogMode(o.enableLog)
 
 	o.db = opened
-
+	o.db.DB().SetConnMaxLifetime(time.Hour)
 	o.initialized = true
 
 	return nil

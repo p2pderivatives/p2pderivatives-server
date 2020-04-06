@@ -10,7 +10,11 @@ log:
   level: debug
 database:
   log: false
-  filepath: "./tmp/gorm.db"
+  host: localhost
+  port: 5432
+  dbuser: postgres
+  dbpassword: 1234
+  dbname: db
 app:
   token:
     secret: k^Cc#*mdnS9$nTOY6S1#1i7^e*o1ijSl #JWT secret key
