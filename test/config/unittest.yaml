@@ -14,8 +14,11 @@ log:
   format: text
   level: debug
 database:
+  inmemory: true # ignored if environment flag is PRODUCTION
   log: false
-  filepath: ":memory:"
+  host: sqlite #mandatory fields but ignored when running with inmemory flag
+  port: 5432
+  dbpassword: 1234
 unittest:
   i: 10
   s: hoge
