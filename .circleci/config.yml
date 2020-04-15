@@ -1,6 +1,7 @@
 version: 2
 jobs:
   build:
+    working_directory: ~/p2pderivatives-server
     docker:
       - image: circleci/golang:1.14
       - image: postgres:12.2
@@ -9,36 +10,36 @@ jobs:
           - POSTGRES_PASSWORD=1234
           - POSTGRES_DB=db
     environment:
-     ARTIFACTS: /tmp/artifacts
+      ARTIFACTS: /tmp/artifacts
     steps:
       - checkout
       - run:
-         name: Create artifact folder
-         command: |
-          mkdir -p $ARTIFACTS
-          echo "Created folder $ARTIFACTS"
-          git submodule update --init --recursive
+          name: Create artifact folder
+          command: |
+            mkdir -p $ARTIFACTS
+            echo "Created folder $ARTIFACTS"
       - run: go get github.com/jstemmer/go-junit-report
       - run:
           name: Waiting for Postgres to be ready
           command: ./scripts/wait_for_connection.sh localhost 5432
       - run:
-         name: Run unit tests
-         command: |
-          ./scripts/install_protoc.sh
-          make setup
-          make gen
-          go test -coverprofile=coverage.out -v ./... > unit_tests.out
-          go tool cover -html=coverage.out -o coverage.html
-          mv coverage.html $ARTIFACTS/coverage.html
-          cat unit_tests.out | go-junit-report > $ARTIFACTS/unit_tests.xml
-          mkdir -p tmp
-          export P2PD_DATABASE_CONNECTIONPARAMS="sslmode=disable"
-          make -B run-server-local &
-          sleep 5
-          go test -tags=integration_test ./test/integration/integration_test.go
+          name: Run tests
+          command: |
+            git submodule update --init --recursive
+            ./scripts/install_protoc.sh
+            make setup
+            make gen
+            go test -coverprofile=coverage.out -v ./... > unit_tests.out
+            go tool cover -html=coverage.out -o coverage.html
+            mv coverage.html $ARTIFACTS/coverage.html
+            cat unit_tests.out | go-junit-report > $ARTIFACTS/unit_tests.xml
+            mkdir -p tmp
+            export P2PD_DATABASE_CONNECTIONPARAMS="sslmode=disable"
+            make -B run-server-local &
+            sleep 5
+            go test -tags=integration_test ./test/integration/integration_test.go
       - store_artifacts:
-         path: /tmp/artifacts
-         destination: raw-test-output
+          path: /tmp/artifacts
+          destination: raw-test-output
       - store_test_results:
-         path: /tmp/artifacts
+          path: /tmp/artifacts
