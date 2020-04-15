@@ -4,6 +4,8 @@ package test;
 
 import "method_option.proto";
 
+option go_package = "p2pderivatives-server/test";
+
 service Test {
     rpc TestNoToken(Empty) returns (Response) {
         option (pbbase.option_base).ignore_token_verify = true;
