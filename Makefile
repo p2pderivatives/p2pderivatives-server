@@ -1,3 +1,5 @@
+API_PATH=api/p2pderivatives-proto
+
 setup: install gen deps
 	echo "setup done"
 
@@ -22,20 +24,17 @@ gen:
 gen-proto:
 	#pbbase/*.proto
 	mkdir -p ./internal/common/grpc/pbbase
-	protoc -I/usr/local/include -I./api/p2pderivatives-proto -I${GOPATH}/src \
-		--go_out=./internal/common/grpc/pbbase\
-		./api/p2pderivatives-proto/method_option.proto
+	$(call gen_proto_go,${API_PATH}, method_option)
 	#user/*.proto
-	protoc -I./internal/user -I./api/p2pderivatives-proto -I${GOPATH}/src -I${GOPATH}/src/github.com/mwitkow/go-proto-validators -I/usr/local/include \
-		--go_out=plugins=grpc:./internal/user/usercontroller user.proto \
-		--govalidators_out=gogoimport=true:./internal/user/usercontroller user.proto
+	$(call gen_proto_go,${API_PATH}, user)
 	#authentication/*.proto
-	protoc -I./internal/authentication -I./api/p2pderivatives-proto -I${GOPATH}/src -I${GOPATH}/src/github.com/mwitkow/go-proto-validators -I/usr/local/include \
-		--go_out=plugins=grpc:./internal/authentication authentication.proto \
-		--govalidators_out=gogoimport=true:./internal/authentication authentication.proto
+	$(call gen_proto_go,${API_PATH}, authentication)
 	#test/*.proto
-	protoc -I./test -I./api/p2pderivatives-proto -I${GOPATH}/src -I${GOPATH}/src/github.com/mwitkow/go-proto-validators -I/usr/local/include \
-		--go_out=plugins=grpc:./test test.proto
+	$(call gen_proto_go,test, test)
+
+define gen_proto_go
+	protoc --proto_path=./$1 -I./api/p2pderivatives-proto  --go_out=plugins=grpc:../ --govalidators_out=../ $2.proto
+endef
 
 gen-mock:
 	mockgen -destination test/mocks/mock_usercontroller/mock_controller.go  p2pderivatives-server/internal/user/usercontroller User_GetUserListServer,User_ReceiveDlcMessagesServer,User_GetConnectedUsersServer
