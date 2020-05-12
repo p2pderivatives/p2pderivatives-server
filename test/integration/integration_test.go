@@ -84,6 +84,8 @@ func TestIntegration(t *testing.T) {
 
 	assertClientList(
 		assert, userClient1, accessToken1, []string{user1.Name})
+
+	assertValidation(assert, authClient1)
 }
 
 func assertUserRegistration(
@@ -295,6 +297,21 @@ func assertUpdatePassword(
 	_, err = authClient.Login(context.Background(), loginRequest)
 
 	assert.Error(err)
+}
+
+func assertValidation(
+	assert *assert.Assertions, authClient authentication.AuthenticationClient) {
+	loginRequest := &authentication.LoginRequest{
+		Name:     "",
+		Password: "",
+	}
+
+	_, err := authClient.Login(context.Background(), loginRequest)
+
+	assert.Error(err)
+	errStatus, _ := status.FromError(err)
+	assert.Equal(codes.InvalidArgument, errStatus.Code())
+	assert.Equal("invalid field Name: value '' must not be an empty string", errStatus.Message())
 }
 
 func getConnection(serverAddress string) (*grpc.ClientConn, error) {
