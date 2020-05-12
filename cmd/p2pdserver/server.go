@@ -19,6 +19,7 @@ import (
 	"p2pderivatives-server/internal/user/userservice"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_validator "github.com/grpc-ecosystem/go-grpc-middleware/validator"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -135,12 +136,14 @@ func main() {
 			logInstance.NewEntry(),
 			methods.TxOption,
 			ormInstance),
+		grpc_validator.UnaryServerInterceptor(),
 	)), grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
 		token.StreamInterceptor(),
 		orm.TransactionStreamServerInterceptor(
 			logInstance.NewEntry(),
 			methods.TxOption,
 			ormInstance),
+		grpc_validator.StreamServerInterceptor(),
 	)))
 
 	userService, userConfig := newUserService(config)
