@@ -28,7 +28,6 @@ jobs:
             git submodule update --init --recursive
             ./scripts/install_protoc.sh
             make setup
-            make gen
             go test -coverprofile=coverage.out -v ./... > unit_tests.out
             go tool cover -html=coverage.out -o coverage.html
             mv coverage.html $ARTIFACTS/coverage.html
