@@ -1,21 +1,24 @@
-FROM golang:1.14-alpine
-
-EXPOSE 8080
-
+FROM golang:1.14-alpine as dev
 RUN apk update
-RUN apk add make gcc libc-dev git wget unzip protobuf-dev
+RUN apk add make gcc libc-dev git wget unzip protobuf-dev openssl
 
-ENV GOROOT=/usr/local/go
-ENV GOPATH=/root/go
-ENV GOBIN=/root/go/bin
-ENV PATH=$PATH:$GOBIN:$GOPATH:$GOROOT/bin
-
-RUN mkdir -p /opt/p2pserver
-ADD . / /opt/p2pserver/
+ENV GO111MODULE=on
 
 WORKDIR /opt/p2pserver
-RUN make install
-RUN make gen-proto
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY ./tools ./tools
+COPY Makefile .
+RUN make install-tools
+
+COPY . /opt/p2pserver/
+
+FROM dev as build
+RUN make gen
 RUN make server
+
+EXPOSE 8080
 
 CMD ["make", "run-server-local"]
