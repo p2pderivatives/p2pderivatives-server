@@ -33,6 +33,10 @@ func NewService(
 
 // CreateUser creates a new user in the system.
 func (s *Service) CreateUser(ctx context.Context, condition *usercommon.User) (*usercommon.User, error) {
+	if !VerifyNewPassword(condition.Password) {
+		return nil, s.CreateServiceError(ctx, servererror.InvalidArguments, "Failed to create user, password does not meet policy", nil)
+	}
+
 	hashedPasswordCondition, err := s.createHashedPasswordUser(condition)
 
 	if err != nil {
