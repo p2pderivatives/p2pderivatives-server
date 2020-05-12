@@ -146,13 +146,27 @@ func TestService_CreateUser(t *testing.T) {
 	user := &usercommon.User{
 		ID:       "id1",
 		Name:     "hoge_taro1",
-		Password: "Pass1",
+		Password: "Pass1@lalalala",
 	}
 
 	createdUser, _ := service.CreateUser(context.Background(), user)
 
 	assert.Equal(t, createdUser.ID, "id1")
 	assert.Equal(t, createdUser.Name, "hoge_taro1")
+}
+
+func TestService_CreateUserWithInvalidPassword_Fails(t *testing.T) {
+	_, service := createRepoAndService()
+
+	user := &usercommon.User{
+		ID:       "id1",
+		Name:     "hoge_taro1",
+		Password: "notsosecure",
+	}
+
+	_, err := service.CreateUser(context.Background(), user)
+
+	assert.Error(t, err)
 }
 
 func TestService_UpdateUser(t *testing.T) {
@@ -393,7 +407,7 @@ func TestRefreshUserToken_WithCorrectRefreshToken_IsRefreshed(t *testing.T) {
 
 const (
 	name        = "test"
-	password    = "p@assw0rd"
+	password    = "P@assw0rd"
 	badPassword = "p@ssword"
 )
 
