@@ -15,13 +15,14 @@ require (
 	github.com/jehiah/go-strftime v0.0.0-20171201141054-1d33003b3869 // indirect
 	github.com/jhump/protoreflect v1.5.0
 	github.com/jinzhu/gorm v1.9.12
+	github.com/jstemmer/go-junit-report v0.9.1
 	github.com/kr/text v0.2.0 // indirect
 	github.com/leodido/go-urn v1.2.0 // indirect
 	github.com/lestrrat/go-envload v0.0.0-20180220120943-6ed08b54a570 // indirect
 	github.com/lestrrat/go-file-rotatelogs v0.0.0-20180223000712-d3151e2a480f
 	github.com/lestrrat/go-strftime v0.0.0-20180220042222-ba3bf9c1d042 // indirect
 	github.com/lib/pq v1.3.0 // indirect
-	github.com/mwitkow/go-proto-validators v0.2.0
+	github.com/mwitkow/go-proto-validators v0.3.0
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/sirupsen/logrus v1.2.0
