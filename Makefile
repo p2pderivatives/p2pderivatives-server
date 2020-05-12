@@ -1,14 +1,13 @@
 API_PATH=api/p2pderivatives-proto
 
-setup: install gen deps
-	echo "setup done"
+setup: install install-tools gen deps
+	@echo "setup done"
 
-install:
-	GO111MODULE=off go get -u github.com/golang/protobuf/protoc-gen-go
-	GO111MODULE=off go get -u github.com/mwitkow/go-proto-validators/protoc-gen-govalidators
-	GO111MODULE=off go get -u github.com/golang/mock/gomock
-	GO111MODULE=on go get -u github.com/golang/mock/mockgen
-	GO111MODULE=on go get -u google.golang.org/grpc
+install: 
+	go mod download
+
+install-tools:
+	$(shell cat tools/tools.go | grep _ | awk -F'"' '{print $$2}' | xargs -tI % go install %)
 
 deps:
 	go mod tidy
@@ -16,10 +15,7 @@ deps:
 vendor:
 	go mod vendor
 
-gen:
-	@make gen-proto
-	@make gen-mock
-	@make gen-ssl-certs
+gen: gen-proto gen-mock gen-ssl-certs
 
 gen-proto:
 	#pbbase/*.proto
@@ -37,7 +33,9 @@ define gen_proto_go
 endef
 
 gen-mock:
+	mkdir -p test/mocks/mock_usercontroller
 	mockgen -destination test/mocks/mock_usercontroller/mock_controller.go  p2pderivatives-server/internal/user/usercontroller User_GetUserListServer,User_ReceiveDlcMessagesServer,User_GetConnectedUsersServer
+	mkdir -p test/mocks/mock_usercommon
 	mockgen -destination test/mocks/mock_usercommon/mock_service.go  p2pderivatives-server/internal/user/usercommon ServiceIf
 
 gen-ssl-certs:
@@ -56,15 +54,12 @@ server:
 	mkdir -p bin
 	go build -o ./bin/server ./cmd/p2pdserver/server.go
 
-bin:
-	@make client
-	@make server
+bin: client server
 
 run-db:
 	docker-compose up db
 
-run-server-local:
-	@make server
+run-server-local: server
 	./bin/server -config ./test/config -appname p2pd -e integration -migrate
 
 docker:
