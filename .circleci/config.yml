@@ -3,12 +3,12 @@ jobs:
   build:
     working_directory: ~/p2pderivatives-server
     docker:
-      - image: circleci/golang:1.14
+      - image: cimg/go:1.14
       - image: postgres:12.2
         environment:
-          - POSTGRES_USER=postgres
-          - POSTGRES_PASSWORD=1234
-          - POSTGRES_DB=db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: "1234"
+          POSTGRES_DB: db
     environment:
       ARTIFACTS: /tmp/artifacts
     steps:
