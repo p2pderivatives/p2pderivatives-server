@@ -15,7 +15,7 @@ deps:
 vendor:
 	go mod vendor
 
-gen: gen-proto gen-mock gen-ssl-certs
+gen: gen-proto gen-mock
 
 gen-proto:
 	#pbbase/*.proto

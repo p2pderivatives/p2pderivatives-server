@@ -1,4 +1,18 @@
-version: 2
+version: 2.1
+workflows:
+  build-test:
+    jobs:
+      - build
+  tagged:
+    jobs:
+      - packaging:
+          context: github-packages-docker-credentials
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
+
 jobs:
   build:
     working_directory: ~/p2pderivatives-server
@@ -41,3 +55,30 @@ jobs:
           destination: raw-test-output
       - store_test_results:
           path: /tmp/artifacts
+
+  packaging:
+    environment:
+      DOCKER_HUB_URL: docker.pkg.github.com
+      IMAGE_REPOSITORY: cryptogarageinc/p2pderivatives-server
+      IMAGE_NAME: server
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - run:
+          name: Checkout submodule
+          command: git submodule update --init --recursive
+      - setup_remote_docker:
+          docker_layer_caching: false
+      - run:
+          name: Login to docker repository
+          command: |
+            echo "$DOCKER_HUB_PASS" | docker login ${DOCKER_HUB_URL} -u "$DOCKER_HUB_USER" --password-stdin
+      - run:
+          name: Build docker image
+          command: |
+            docker build -t ${DOCKER_HUB_URL}/${IMAGE_REPOSITORY}/${IMAGE_NAME}:${CIRCLE_TAG} .
+      - run:
+          name: Push image to repository
+          command: |
+            docker push ${DOCKER_HUB_URL}/${IMAGE_REPOSITORY}/${IMAGE_NAME}:${CIRCLE_TAG}
