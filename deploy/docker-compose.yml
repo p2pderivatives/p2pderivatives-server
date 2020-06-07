@@ -1,0 +1,66 @@
+# meant to be use as docker swarm
+# need to specify the image version tag by using env variable IMAGE_TAG
+version: '3.5'
+services:
+  server:
+    image: docker.pkg.github.com/cryptogarageinc/p2pderivatives-server/server:${IMAGE_TAG:?}
+    labels:
+      image.version: ${IMAGE_TAG:?}
+    deploy:
+      restart_policy:
+        condition: on-failure
+    environment:
+      # database
+      P2PDSERVER_DATABASE_DBUSER: postgres
+      P2PDSERVER_DATABASE_DBPASSWORD: ${DB_PASSWORD:?}
+      P2PDSERVER_DATABASE_DBNAME: db
+      P2PDSERVER_DATABASE_HOST: db
+      P2PDSERVER_DATABASE_PORT: 5432
+      # JWT
+      P2PDSERVER_APP_TOKEN_SECRET: ${APP_TOKEN_SECRET:?}
+    depends_on:
+      - db
+    ports:
+      - 444:8080
+    configs:
+      - source: server
+        target: /config/default.yml
+
+  db:
+    image: "postgres:12.2"
+    command: |
+      -c log_statement=all
+      -c ssl=on
+      -c ssl_cert_file=/run/secrets/server_db_cert
+      -c ssl_key_file=/run/secrets/server_db_key
+    deploy:
+      restart_policy:
+        condition: on-failure
+    ports:
+      - 5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?}
+      POSTGRES_DB: db
+    secrets:
+      - server_db_cert
+      - source: server_db_key
+        target: server_db_key
+        uid: '999' # postgres uid guid
+        gid: '999'
+        mode: 0600
+    volumes:
+      - db_data:/var/lib/postgresql/data/ # persist data even if container shuts down
+
+volumes:
+  db_data:
+
+secrets:
+  server_db_cert:
+    external: true
+  server_db_key:
+    external: true
+
+configs:
+  server:
+    external: true
