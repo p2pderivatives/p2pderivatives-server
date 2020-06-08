@@ -108,13 +108,18 @@ func (controller *Controller) UnregisterUser(
 func (controller *Controller) GetUserList(
 	empty *Empty,
 	stream User_GetUserListServer) error {
-	users, err := controller.userService.GetAllUsers(stream.Context())
+	ctx := stream.Context()
+	userID := contexts.GetUserID(ctx)
+	users, err := controller.userService.GetAllUsers(ctx)
 
 	if err != nil {
 		return servererror.GetGrpcStatus(stream.Context(), err).Err()
 	}
-
 	for _, user := range users {
+		// Skip requesting user
+		if userID == user.ID {
+			continue
+		}
 		stream.Send(userModelToInfo(&user))
 	}
 
