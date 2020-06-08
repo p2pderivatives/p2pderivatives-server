@@ -60,7 +60,8 @@ func TestRegisterUser_WithNewUser_IsRegistered(t *testing.T) {
 	assert := assert.New(t)
 	controller := createController()
 	defer controller.Close()
-	userRegisterRequest := createUserRegisterRequest(createUser())
+	user := createUser()
+	userRegisterRequest := createUserRegisterRequest(user)
 	userInfo := usercontroller.UserInfo{
 		Name: userRegisterRequest.Name,
 	}
@@ -68,7 +69,8 @@ func TestRegisterUser_WithNewUser_IsRegistered(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	stream := mock_usercontroller.NewMockUser_GetUserListServer(mockCtrl)
 	stream.EXPECT().Send(&userInfo).Times(1)
-	stream.EXPECT().Context().Return(ctx).Times(1)
+	ctxId := contexts.SetUserID(ctx, user.ID)
+	stream.EXPECT().Context().Return(ctxId).Times(1)
 
 	// Act
 	_, err := controller.RegisterUser(ctx, userRegisterRequest)
