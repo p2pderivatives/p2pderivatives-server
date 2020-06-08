@@ -73,7 +73,7 @@ func TestIntegration(t *testing.T) {
 	assertFailedLogin(assert, authClient3)
 
 	assertClientList(
-		assert, userClient1, accessToken1, []string{user1.Name, user2.Name})
+		assert, userClient1, accessToken1, []string{user2.Name})
 
 	assertMessaging(
 		assert, userClient1, userClient2, user1, user2, accessToken1, accessToken2)
@@ -83,7 +83,7 @@ func TestIntegration(t *testing.T) {
 	assertUserUnregister(assert, userClient2, user2, accessToken2)
 
 	assertClientList(
-		assert, userClient1, accessToken1, []string{user1.Name})
+		assert, userClient1, accessToken1, []string{})
 
 	assertValidation(assert, authClient1)
 }
