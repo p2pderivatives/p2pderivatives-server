@@ -63,7 +63,7 @@ jobs:
             export P2PD_DATABASE_CONNECTIONPARAMS="sslmode=disable"
             make -B run-server-local &
             sleep 5
-            go test -tags=integration_test ./test/integration/integration_test.go
+            make integration-test
       - store_artifacts:
           path: /tmp/artifacts
           destination: raw-test-output

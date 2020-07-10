@@ -330,6 +330,10 @@ func TestGetConnectedUsers_ReturnsConnectedUsers(t *testing.T) {
 	ctx3 := contexts.SetUserID(ctx, id3)
 	mockStream3.EXPECT().Context().Return(ctx3).AnyTimes()
 
+	// mock pings
+	mockStream1.EXPECT().Send(&usercontroller.DlcMessage{DestName: modelUser1.Name}).Times(1)
+	mockStream2.EXPECT().Send(&usercontroller.DlcMessage{DestName: modelUser2.Name}).Times(1)
+
 	userInfo1 := &usercontroller.UserInfo{Name: modelUser1.Name}
 	userInfo2 := &usercontroller.UserInfo{Name: modelUser2.Name}
 
@@ -339,7 +343,7 @@ func TestGetConnectedUsers_ReturnsConnectedUsers(t *testing.T) {
 	// Act
 	go controller.ReceiveDlcMessages(&usercontroller.Empty{}, mockStream1)
 	go controller.ReceiveDlcMessages(&usercontroller.Empty{}, mockStream2)
-	time.Sleep(time.Millisecond * 5)
+	time.Sleep(time.Millisecond * 100)
 	err := controller.GetConnectedUsers(&usercontroller.Empty{}, mockStream3)
 
 	// Assert

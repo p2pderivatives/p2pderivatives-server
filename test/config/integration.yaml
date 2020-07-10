@@ -7,7 +7,7 @@ log:
   rotation_interval: 24h
   rotation_counts: 7
   format: text
-  level: debug
+  level: info
 database:
   log: false
   host: localhost

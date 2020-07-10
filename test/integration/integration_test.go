@@ -85,6 +85,8 @@ func TestIntegration(t *testing.T) {
 	assertClientList(
 		assert, userClient1, accessToken1, []string{})
 
+	assertGetConnectedUser(assert, serverAddress, userClient1, accessToken1)
+
 	assertValidation(assert, authClient1)
 }
 
@@ -236,27 +238,6 @@ func assertMessaging(
 
 	wg.Add(1)
 
-	stream, err3 := userClient1.GetConnectedUsers(ctx2, &usercontroller.Empty{})
-	assert.NoError(err3)
-	userNames := make([]string, 0)
-
-	for {
-		userInfo, err := stream.Recv()
-
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			log.Fatalf("%v.GetUserList(_) = _, %v", userClient2, err)
-		}
-
-		userNames = append(userNames, userInfo.Name)
-	}
-
-	assert.Len(userNames, 1)
-	assert.Equal(user1.Name, userNames[0])
-
 	_, err2 = userClient2.SendDlcMessage(ctx2, message)
 
 	wg.Wait()
@@ -299,6 +280,57 @@ func assertUpdatePassword(
 	assert.Error(err)
 }
 
+func assertGetConnectedUser(assert * assert.Assertions, serverAddress string, client usercontroller.UserClient, accessToken string) {
+	// arrange
+	ctx := metadata.AppendToOutgoingContext(
+		context.Background(), token.MetaKeyAuthentication, accessToken)
+	connToShutdown, err := getConnection(serverAddress)
+	assert.NoError(err)
+
+	shutdownUserClient := usercontroller.NewUserClient(connToShutdown)
+	shutdownAuthClient := authentication.NewAuthenticationClient(connToShutdown)
+	shutdownUser := &usercommon.User{
+		Name:     "NameShutdown",
+		Password: "P@ssword0",
+	}
+	user3 := &usercommon.User{
+		Name:                  "Client3",
+		Password:              "P@ssword0",
+	}
+	client3, auth3, err :=  getClients(serverAddress)
+	assert.NoError(err)
+	assertUserRegistration(assert, shutdownUserClient, shutdownUser)
+	assertUserRegistration(assert, client3, user3)
+
+	shutdownAccessToken, _ := assertLogin(assert, shutdownAuthClient, shutdownUser)
+	user3AccessToken, _ := assertLogin(assert, auth3, user3)
+	assertClientList(
+		assert, client, accessToken, []string{shutdownUser.Name, user3.Name})
+	ctxShutdown := metadata.AppendToOutgoingContext(
+		context.Background(), token.MetaKeyAuthentication, shutdownAccessToken)
+	ctx3 := metadata.AppendToOutgoingContext(
+		context.Background(), token.MetaKeyAuthentication, user3AccessToken)
+
+	_, err = shutdownUserClient.ReceiveDlcMessages(ctxShutdown, &usercontroller.Empty{})
+	assert.NoError(err)
+	_, err = client3.ReceiveDlcMessages(ctx3, &usercontroller.Empty{})
+	assert.NoError(err)
+
+	time.Sleep(10 * time.Millisecond)
+	userNames := getConnectedUser(assert, client, ctx)
+	assert.Contains(userNames, shutdownUser.Name)
+	assert.Contains(userNames, user3.Name)
+
+	// act
+	err = connToShutdown.Close()
+
+	// assert
+	assert.NoError(err)
+	userNames = getConnectedUser(assert, client, ctx)
+	assert.NotContains(userNames, shutdownUser.Name)
+	assert.Contains(userNames, user3.Name)
+}
+
 func assertValidation(
 	assert *assert.Assertions, authClient authentication.AuthenticationClient) {
 	loginRequest := &authentication.LoginRequest{
@@ -333,4 +365,25 @@ func getClients(serverAddress string) (usercontroller.UserClient, authentication
 	authClient := authentication.NewAuthenticationClient(conn)
 
 	return userClient, authClient, nil
+}
+
+func getConnectedUser(assert *assert.Assertions, client usercontroller.UserClient, ctx context.Context) []string {
+	stream, err := client.GetConnectedUsers(ctx, &usercontroller.Empty{})
+	assert.NoError(err)
+	userNames := make([]string, 0)
+
+	for {
+		userInfo, err := stream.Recv()
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			assert.Fail("Error while receiving getConnectedUserStream %v", err)
+		}
+
+		userNames = append(userNames, userInfo.Name)
+	}
+	return userNames
 }

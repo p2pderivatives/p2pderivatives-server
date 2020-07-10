@@ -2,11 +2,11 @@ package usercontroller
 
 import (
 	"context"
-	"sync"
-
 	"p2pderivatives-server/internal/common/contexts"
 	"p2pderivatives-server/internal/common/servererror"
 	"p2pderivatives-server/internal/user/usercommon"
+	"sync"
+	"time"
 )
 
 var empty *Empty = &Empty{}
@@ -20,15 +20,18 @@ const (
 	notOk = iota
 )
 
+const pingTimeout = 50 * time.Millisecond
+
 type dlcMessageWithAck struct {
 	message *DlcMessage
 	ackChan chan int
 }
+type userChannelsType = map[string]map[chan *dlcMessageWithAck]void
 
 // Controller represents the grpc server serving the user services.
 type Controller struct {
 	userService  usercommon.ServiceIf
-	userChannels map[string]map[chan *dlcMessageWithAck]void
+	userChannels userChannelsType
 	channelLock  sync.RWMutex
 	config       *usercommon.Config
 }
@@ -131,17 +134,16 @@ func (controller *Controller) GetUserList(
 func (controller *Controller) ReceiveDlcMessages(
 	empty *Empty,
 	stream User_ReceiveDlcMessagesServer) error {
-	userID := contexts.GetUserID(stream.Context())
+	ctx := stream.Context()
+	userID := contexts.GetUserID(ctx)
 	user, err := controller.userService.FindFirstUser(
-		stream.Context(), &usercommon.User{ID: userID}, nil)
-
+		ctx, &usercommon.User{ID: userID}, nil)
 	if err != nil {
-		return servererror.GetGrpcStatus(stream.Context(), err).Err()
+		return servererror.GetGrpcStatus(ctx, err).Err()
 	}
 
 	dlcChannel := make(chan *dlcMessageWithAck, 10)
 	controller.addUserChannel(dlcChannel, user.Name)
-
 	for messageWithAck := range dlcChannel {
 		message := messageWithAck.message
 		ackChannel := messageWithAck.ackChan
@@ -150,10 +152,9 @@ func (controller *Controller) ReceiveDlcMessages(
 		}
 
 		err := stream.Send(message)
-
 		if err != nil {
-			ackChannel <- notOk
 			controller.removeUserChannel(user, dlcChannel)
+			ackChannel <- notOk
 			return err
 		}
 
@@ -215,15 +216,16 @@ func (controller *Controller) SendDlcMessage(
 func (controller *Controller) GetConnectedUsers(
 	empty *Empty,
 	stream User_GetConnectedUsersServer) error {
-	userID := contexts.GetUserID(stream.Context())
+	ctx := stream.Context()
+	userID := contexts.GetUserID(ctx)
 
 	user, err := controller.userService.FindFirstUser(
-		stream.Context(), &usercommon.User{ID: userID}, nil)
-
+		ctx, &usercommon.User{ID: userID}, nil)
 	if err != nil {
-		return servererror.GetGrpcStatus(stream.Context(), err).Err()
+		return servererror.GetGrpcStatus(ctx, err).Err()
 	}
 
+	controller.pingDlcChannels()
 	userNames := controller.getConnectedUsers()
 
 	for _, userName := range userNames {
@@ -271,7 +273,14 @@ func (controller *Controller) addUserChannel(
 func (controller *Controller) removeUserChannel(
 	user *usercommon.User, channel chan *dlcMessageWithAck) {
 	controller.channelLock.Lock()
-	delete(controller.userChannels[user.Name], channel)
+	channels, ok := controller.userChannels[user.Name]
+	if !ok {
+		return
+	}
+	delete(channels, channel)
+	if len(channels) == 0 {
+		delete(controller.userChannels, user.Name)
+	}
 	controller.channelLock.Unlock()
 }
 
@@ -287,4 +296,46 @@ func (controller *Controller) getConnectedUsers() []string {
 	}
 
 	return userNames
+}
+
+func (controller *Controller) pingDlcChannels() {
+	channelsToPing, count := controller.getUserChannelsSafe()
+	var wg sync.WaitGroup
+	wg.Add(count)
+	for userName, channels := range channelsToPing {
+		for _, channel := range channels {
+			go pingSingleChannel(&wg, userName, channel)
+		}
+	}
+	wg.Wait()
+}
+
+func (controller *Controller) getUserChannelsSafe() (map[string][]chan *dlcMessageWithAck, int) {
+	channelsToPing := make(map[string][]chan *dlcMessageWithAck)
+	count := 0
+	controller.channelLock.RLock()
+	for userName := range controller.userChannels {
+		for subChannel := range controller.userChannels[userName] {
+			count++
+			channelsToPing[userName] = append(channelsToPing[userName], subChannel)
+		}
+	}
+	controller.channelLock.RUnlock()
+	return channelsToPing, count
+}
+
+func pingSingleChannel(wg *sync.WaitGroup, dest string, chanToPing chan *dlcMessageWithAck) {
+	defer wg.Done()
+	pingChannel := make(chan int)
+	select {
+	case chanToPing <- &dlcMessageWithAck{
+		message: &DlcMessage{DestName: dest, OrgName: ""},
+		ackChan: pingChannel}:
+		// Ping in the channel unless it is full
+		select {
+		case <-pingChannel:
+		case <-time.After(pingTimeout):
+		}
+	default:
+	}
 }
