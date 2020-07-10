@@ -71,5 +71,8 @@ run-docker:
 test-local:
 	go test ./...
 
+integration-test:
+	go test -tags=integration_test ./test/integration/integration_test.go
+
 help:
 	@make2help $(MAKEFILE_LIST)
