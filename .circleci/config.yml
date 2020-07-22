@@ -103,7 +103,7 @@ jobs:
       DOCKER_HUB_URL: docker.pkg.github.com
       CD_MACHINE_SSH: circleci@3.115.1.105
       CD_STACK_NAME: server-staging
-      CD_SERVICE_ADDRESS: tcp://3.115.1.105:444
+      CD_SERVICE_ADDRESS: tcp://server.p2pderivatives.io:443
     steps:
       - checkout
       - add_ssh_keys:
