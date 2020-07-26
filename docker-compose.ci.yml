@@ -1,0 +1,28 @@
+version: '3.4'
+services:
+  server:
+    image: server:${CIRCLE_SHA1}
+    volumes:
+      - server-config:/config
+  db:
+    volumes:
+      - db-certs:/certs
+  dev:
+    build:
+      context: .
+      target: dev
+    image: server-dev:${CIRCLE_SHA1}
+    volumes:
+      - reports:/reports
+
+  dockerize:
+    image: jwilder/dockerize
+
+
+volumes:
+  server-config:
+    external: true
+  db-certs:
+    external: true
+  reports:
+    external: true

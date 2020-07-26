@@ -345,6 +345,7 @@ func TestGetConnectedUsers_ReturnsConnectedUsers(t *testing.T) {
 	go controller.ReceiveDlcMessages(&usercontroller.Empty{}, mockStream2)
 	time.Sleep(time.Millisecond * 100)
 	err := controller.GetConnectedUsers(&usercontroller.Empty{}, mockStream3)
+	time.Sleep(time.Millisecond * 100)
 
 	// Assert
 	assert.NoError(t, err)

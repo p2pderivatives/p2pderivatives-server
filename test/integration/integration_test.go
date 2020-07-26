@@ -1,4 +1,4 @@
-// +build integration_test
+// +build integration
 
 package integration
 
@@ -6,6 +6,7 @@ import (
 	"context"
 	"io"
 	"log"
+	"os"
 	"p2pderivatives-server/internal/authentication"
 	"p2pderivatives-server/internal/common/conf"
 	"p2pderivatives-server/internal/common/token"
@@ -38,6 +39,11 @@ var user2 = &usercommon.User{
 	Password: "P@ssw2rd2",
 }
 
+func TestMain(m *testing.M) {
+	initHelper()
+	os.Exit(m.Run())
+}
+
 func TestIntegration(t *testing.T) {
 	assert := assert.New(t)
 	config := conf.NewConfiguration(
@@ -45,7 +51,7 @@ func TestIntegration(t *testing.T) {
 		envName,
 		[]string{filepath.Join("..", "config")})
 	config.Initialize()
-	serverAddress := config.GetString("server.address")
+	serverAddress := *argServerAddress
 
 	userClient1, authClient1, err := getClients(serverAddress)
 
@@ -280,7 +286,7 @@ func assertUpdatePassword(
 	assert.Error(err)
 }
 
-func assertGetConnectedUser(assert * assert.Assertions, serverAddress string, client usercontroller.UserClient, accessToken string) {
+func assertGetConnectedUser(assert *assert.Assertions, serverAddress string, client usercontroller.UserClient, accessToken string) {
 	// arrange
 	ctx := metadata.AppendToOutgoingContext(
 		context.Background(), token.MetaKeyAuthentication, accessToken)
@@ -294,10 +300,10 @@ func assertGetConnectedUser(assert * assert.Assertions, serverAddress string, cl
 		Password: "P@ssword0",
 	}
 	user3 := &usercommon.User{
-		Name:                  "Client3",
-		Password:              "P@ssword0",
+		Name:     "Client3",
+		Password: "P@ssword0",
 	}
-	client3, auth3, err :=  getClients(serverAddress)
+	client3, auth3, err := getClients(serverAddress)
 	assert.NoError(err)
 	assertUserRegistration(assert, shutdownUserClient, shutdownUser)
 	assertUserRegistration(assert, client3, user3)

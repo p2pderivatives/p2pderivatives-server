@@ -11,6 +11,12 @@ workflows:
   build-test:
     jobs:
       - build
+      - tests:
+          requires:
+            - build
+      - integration-tests:
+          requires:
+            - tests
   tagged:
     jobs:
       - packaging:
@@ -27,48 +33,110 @@ workflows:
           requires:
             - hold
 
+orbs:
+  go: circleci/go@1.1.1
 jobs:
   build:
     working_directory: ~/p2pderivatives-server
     docker:
       - image: cimg/go:1.14
-      - image: postgres:12.2
-        environment:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: "1234"
-          POSTGRES_DB: db
-    environment:
-      ARTIFACTS: /tmp/artifacts
     steps:
       - checkout
+      - run: 
+          name: Checkout submodules
+          command: git submodule update --init --recursive
       - run:
-          name: Create artifact folder
+          name: Install protoc
+          command: ./scripts/install_protoc.sh
+      - restore_cache:
+          keys:
+            - go-mods-{{ checksum "go.sum" }}-v1
+      - run:
+          name: Install
           command: |
-            mkdir -p $ARTIFACTS
-            echo "Created folder $ARTIFACTS"
-      - run:
-          name: Waiting for Postgres to be ready
-          command: ./scripts/wait_for_connection.sh localhost 5432
-      - run:
-          name: Run tests
-          command: |
-            git submodule update --init --recursive
-            ./scripts/install_protoc.sh
             make setup
-            go test -coverprofile=coverage.out -v ./... > unit_tests.out
-            go tool cover -html=coverage.out -o coverage.html
-            mv coverage.html $ARTIFACTS/coverage.html
-            cat unit_tests.out | go-junit-report > $ARTIFACTS/unit_tests.xml
-            mkdir -p tmp
-            export P2PD_DATABASE_CONNECTIONPARAMS="sslmode=disable"
-            make -B run-server-local &
-            sleep 5
-            make integration-test
+            make gen-ssl-certs
+      - save_cache:
+          key: go-mods-{{ checksum "go.sum" }}-v1
+          paths:
+            - /home/circleci/go/pkg/mod
+      - run:
+          name: Build Server and client
+          command: |
+            make bin
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+
+  tests:
+    working_directory: ~/p2pderivatives-server
+    docker:
+      - image: cimg/go:1.14
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Run unit-tests
+          command: |
+            mkdir -p ../reports && mkdir -p ../coverage
+            gotestsum --junitfile ../reports/unit_test_report.xml \
+              -- -coverprofile=../coverage/coverage.out ./...
       - store_artifacts:
-          path: /tmp/artifacts
+          path: ../coverage
           destination: raw-test-output
       - store_test_results:
-          path: /tmp/artifacts
+          path: ../reports/
+
+  integration-tests:
+    working_directory: ~/p2pderivatives-server
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - attach_workspace:
+          at: .
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Setup configuration and volumes
+          command: |
+            docker volume create server-config #ensure same name in docker-compose.ci
+            docker volume create db-certs
+            docker volume create reports
+            docker create \
+              -v server-config:/config \
+              -v db-certs:/certs \
+              -v reports:/reports \
+              --name helper alpine /bin/true
+            docker cp ./test/config/. helper:/config
+            docker cp ./certs/. helper:/certs
+            # adding permissions 
+            docker-compose -f docker-compose.yml -f docker-compose.ci.yml run db bash -c \
+              "chown postgres:postgres /certs/db.key && chgrp postgres /certs/db.key && chmod 600 /certs/db.key"
+      - run:
+          name: Start docker-compose service
+          command: |
+            docker-compose -f docker-compose.yml -f docker-compose.ci.yml up -d server \
+      - run:
+          name: Wait for server services
+          command: |
+            docker-compose -f docker-compose.yml -f docker-compose.ci.yml run dockerize \
+              -wait tcp://server:8080
+      - run:
+          name: Run integration tests
+          command: |
+            docker-compose -f docker-compose.yml -f docker-compose.ci.yml run dev sh -c \
+            'gotestsum --junitfile /reports/integration_report.xml \
+            -- -tags=integration \
+            ./test/integration/... \
+            -args -server-address server:8081 '
+      - run:
+          name: Recover tests results
+          command: |
+            docker cp  helper:/reports/. ./reports
+          when: always
+      - store_test_results:
+          path: reports/
 
   packaging:
     environment:
