@@ -15,10 +15,10 @@ RUN make install-tools
 
 COPY . .
 
-FROM dev as build
 RUN make gen
-RUN make bin
 
+FROM dev as build
+RUN make bin
 
 FROM alpine as prod
 

@@ -11,6 +11,12 @@ workflows:
   build-test:
     jobs:
       - build
+      - tests:
+          requires:
+            - build
+      - integration-tests:
+          requires:
+            - tests
   tagged:
     jobs:
       - packaging:
@@ -27,8 +33,63 @@ workflows:
           requires:
             - hold
 
+orbs:
+  go: circleci/go@1.1.1
 jobs:
   build:
+    working_directory: ~/p2pderivatives-server
+    docker:
+      - image: cimg/go:1.14
+    steps:
+      - checkout
+      - run: 
+          name: Checkout submodules
+          command: git submodule update --init --recursive
+      - run:
+          name: Install protoc
+          command: ./scripts/install_protoc.sh
+      - restore_cache:
+          keys:
+            - go-mods-{{ checksum "go.sum" }}-v1
+      - run:
+          name: Install
+          command: |
+            make setup
+            make gen-ssl-certs
+      - save_cache:
+          key: go-mods-{{ checksum "go.sum" }}-v1
+          paths:
+            - /home/circleci/go/pkg/mod
+      - run:
+          name: Build Server and client
+          command: |
+            make bin
+      - persist_to_workspace:
+          root: ..
+          paths:
+            - p2pderivatives-server
+            - go/pkg/mod
+
+  tests:
+    working_directory: ~/p2pderivatives-server
+    docker:
+      - image: cimg/go:1.14
+    steps:
+      - attach_workspace:
+          at: ..
+      - run:
+          name: Run unit-tests
+          command: |
+            mkdir -p ../reports && mkdir -p ../coverage
+            gotestsum --junitfile ../reports/unit_test_report.xml \
+              -- -coverprofile=../coverage/coverage.out ./...
+      - store_artifacts:
+          path: ../coverage
+          destination: raw-test-output
+      - store_test_results:
+          path: ../reports/
+
+  integration-tests:
     working_directory: ~/p2pderivatives-server
     docker:
       - image: cimg/go:1.14
@@ -37,38 +98,22 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: "1234"
           POSTGRES_DB: db
-    environment:
-      ARTIFACTS: /tmp/artifacts
     steps:
-      - checkout
+      - attach_workspace:
+          at: ..
       - run:
-          name: Create artifact folder
+          name: Start service & Run integration tests
           command: |
-            mkdir -p $ARTIFACTS
-            echo "Created folder $ARTIFACTS"
-      - run:
-          name: Waiting for Postgres to be ready
-          command: ./scripts/wait_for_connection.sh localhost 5432
-      - run:
-          name: Run tests
-          command: |
-            git submodule update --init --recursive
-            ./scripts/install_protoc.sh
-            make setup
-            go test -coverprofile=coverage.out -v ./... > unit_tests.out
-            go tool cover -html=coverage.out -o coverage.html
-            mv coverage.html $ARTIFACTS/coverage.html
-            cat unit_tests.out | go-junit-report > $ARTIFACTS/unit_tests.xml
-            mkdir -p tmp
+            dockerize -wait tcp://localhost:5432
             export P2PD_DATABASE_CONNECTIONPARAMS="sslmode=disable"
             make -B run-server-local &
-            sleep 5
-            make integration-test
-      - store_artifacts:
-          path: /tmp/artifacts
-          destination: raw-test-output
+            dockerize -wait tcp://localhost:8080
+            mkdir reports 
+            gotestsum --junitfile reports/integration_report.xml \
+            -- -tags=integration \
+            ./test/integration/...
       - store_test_results:
-          path: /tmp/artifacts
+          path: reports/
 
   packaging:
     environment:

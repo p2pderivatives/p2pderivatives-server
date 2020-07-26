@@ -46,6 +46,7 @@ gen-ssl-certs:
 	openssl req -x509 -in ${CERT_TEMP}/db.req -text -key certs/db.key -out certs/db.crt
 	chmod 600 certs/db.key
 
+
 client:
 	mkdir -p bin
 	go build -o ./bin/p2pdclient ./cmd/p2pdcli/p2pdcli.go
@@ -59,7 +60,7 @@ bin: client server
 run-db:
 	docker-compose up db
 
-run-server-local: server
+run-server-local:
 	./bin/server -config ./test/config -appname p2pd -e integration -migrate
 
 docker:
@@ -68,11 +69,11 @@ docker:
 run-docker:
 	docker-compose up
 
-test-local:
-	go test ./...
+unit-test:
+	gotestsum -- ./...
 
 integration-test:
-	go test -tags=integration_test ./test/integration/integration_test.go
+	gotestsum -- -tags=integration ./test/integration/...
 
 help:
 	@make2help $(MAKEFILE_LIST)

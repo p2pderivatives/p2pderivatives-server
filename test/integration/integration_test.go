@@ -1,4 +1,4 @@
-// +build integration_test
+// +build integration
 
 package integration
 
@@ -280,7 +280,7 @@ func assertUpdatePassword(
 	assert.Error(err)
 }
 
-func assertGetConnectedUser(assert * assert.Assertions, serverAddress string, client usercontroller.UserClient, accessToken string) {
+func assertGetConnectedUser(assert *assert.Assertions, serverAddress string, client usercontroller.UserClient, accessToken string) {
 	// arrange
 	ctx := metadata.AppendToOutgoingContext(
 		context.Background(), token.MetaKeyAuthentication, accessToken)
@@ -294,10 +294,10 @@ func assertGetConnectedUser(assert * assert.Assertions, serverAddress string, cl
 		Password: "P@ssword0",
 	}
 	user3 := &usercommon.User{
-		Name:                  "Client3",
-		Password:              "P@ssword0",
+		Name:     "Client3",
+		Password: "P@ssword0",
 	}
-	client3, auth3, err :=  getClients(serverAddress)
+	client3, auth3, err := getClients(serverAddress)
 	assert.NoError(err)
 	assertUserRegistration(assert, shutdownUserClient, shutdownUser)
 	assertUserRegistration(assert, client3, user3)
