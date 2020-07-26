@@ -7,6 +7,6 @@ import (
 	_ "github.com/golang/mock/gomock"
 	_ "github.com/golang/mock/mockgen"
 	_ "github.com/golang/protobuf/protoc-gen-go"
-	_ "github.com/jstemmer/go-junit-report"
 	_ "github.com/mwitkow/go-proto-validators/protoc-gen-govalidators"
+	_ "gotest.tools/gotestsum"
 )

@@ -334,17 +334,25 @@ func TestGetConnectedUsers_ReturnsConnectedUsers(t *testing.T) {
 	mockStream1.EXPECT().Send(&usercontroller.DlcMessage{DestName: modelUser1.Name}).Times(1)
 	mockStream2.EXPECT().Send(&usercontroller.DlcMessage{DestName: modelUser2.Name}).Times(1)
 
-	userInfo1 := &usercontroller.UserInfo{Name: modelUser1.Name}
-	userInfo2 := &usercontroller.UserInfo{Name: modelUser2.Name}
+	expectedUsers := make(map[string]usercontroller.UserInfo)
+	expectedUsers[modelUser1.Name] = usercontroller.UserInfo{Name: modelUser1.Name}
+	expectedUsers[modelUser2.Name] = usercontroller.UserInfo{Name: modelUser2.Name}
 
-	mockStream3.EXPECT().Send(userInfo1).Times(1)
-	mockStream3.EXPECT().Send(userInfo2).Times(1)
+	mockStream3.EXPECT().Send(gomock.Any()).DoAndReturn(
+		func(info *usercontroller.UserInfo) error {
+			if _, ok := expectedUsers[info.Name]; !ok {
+				assert.Failf(t, "User %s not in expected user", info.Name)
+			}
+			delete(expectedUsers, info.Name)
+			return nil
+		}).Times(2)
 
 	// Act
 	go controller.ReceiveDlcMessages(&usercontroller.Empty{}, mockStream1)
 	go controller.ReceiveDlcMessages(&usercontroller.Empty{}, mockStream2)
 	time.Sleep(time.Millisecond * 100)
 	err := controller.GetConnectedUsers(&usercontroller.Empty{}, mockStream3)
+	time.Sleep(time.Millisecond * 100)
 
 	// Assert
 	assert.NoError(t, err)
