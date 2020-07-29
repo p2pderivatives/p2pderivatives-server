@@ -73,7 +73,7 @@ jobs:
   packaging:
     environment:
       DOCKER_HUB_URL: docker.pkg.github.com
-      IMAGE_REPOSITORY: cryptogarageinc/p2pderivatives-server
+      IMAGE_REPOSITORY: p2pderivatives/p2pderivatives-server
       IMAGE_NAME: server
     docker:
       - image: cimg/base:stable
