@@ -13,12 +13,14 @@ import (
 	"p2pderivatives-server/internal/cli"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 )
 
 var (
 	serverAddress       string
 	authenticationToken string
+	serverCertificate   string
 )
 
 // Command represent a command that can be invoked.
@@ -45,6 +47,7 @@ func init() {
 		cmd.Init()
 		flagSet := cmd.GetFlagSet()
 		flagSet.StringVar(&serverAddress, "server", "", "The address of the server.")
+		flagSet.StringVar(&serverCertificate, "serverCertificate", "", "The path to the server certificate (optional).")
 		flagSet.StringVar(&authenticationToken, "token", "", "The authentication token.")
 		commandMap[cmd.Command()] = cmd
 	}
@@ -74,7 +77,7 @@ func main() {
 		log.Fatalf("Error parsing flags %v", err)
 	}
 
-	conn, err := getConnection(&serverAddress)
+	conn, err := getConnection(&serverAddress, &serverCertificate)
 	defer conn.Close()
 
 	if err != nil {
@@ -92,14 +95,24 @@ func main() {
 }
 
 // getConnection returns a client for a GRPC server at the specified address.
-func getConnection(serverAddress *string) (*grpc.ClientConn, error) {
+func getConnection(serverAddress *string, serverCertificate *string) (*grpc.ClientConn, error) {
 	if *serverAddress == "" {
 		return nil, errors.New("No server address provided")
 	}
 
 	var opts []grpc.DialOption
 
-	opts = append(opts, grpc.WithInsecure())
+	if *serverCertificate == "" {
+		opts = append(opts, grpc.WithInsecure())
+		return grpc.Dial(*serverAddress, opts...)
+	}
 
+	creds, err := credentials.NewClientTLSFromFile(*serverCertificate, "")
+
+	if err != nil {
+		return nil, err
+	}
+
+	opts = append(opts, grpc.WithTransportCredentials(creds))
 	return grpc.Dial(*serverAddress, opts...)
 }
