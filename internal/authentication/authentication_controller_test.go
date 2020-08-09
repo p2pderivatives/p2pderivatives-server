@@ -1,7 +1,7 @@
 package authentication
 
 import (
-	context "context"
+	"context"
 	"errors"
 	"testing"
 

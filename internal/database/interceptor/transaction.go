@@ -1,9 +1,11 @@
-package orm
+package interceptor
 
 import (
 	"context"
 	"database/sql"
 	"p2pderivatives-server/internal/common/grpc/pbbase"
+
+	"github.com/cryptogarageinc/server-common-go/pkg/database/orm"
 
 	"github.com/jinzhu/gorm"
 	"github.com/sirupsen/logrus"
@@ -34,7 +36,7 @@ func (w *wrappedStream) Context() context.Context {
 func TransactionStreamServerInterceptor(
 	log *logrus.Entry,
 	txOption func(fullMethod string) pbbase.TxOption,
-	ormInstance *ORM) grpc.StreamServerInterceptor {
+	ormInstance *orm.ORM) grpc.StreamServerInterceptor {
 	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		subHandler := func(ctx context.Context) (interface{}, error) {
 			wStream := &wrappedStream{ss, ctx}
@@ -53,7 +55,7 @@ func TransactionStreamServerInterceptor(
 func TransactionUnaryServerInterceptor(
 	log *logrus.Entry,
 	txOption func(fullMethod string) pbbase.TxOption,
-	ormInstance *ORM) grpc.UnaryServerInterceptor {
+	ormInstance *orm.ORM) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		subHandler := func(ctx context.Context) (interface{}, error) {
 			res, err := handler(ctx, req)
@@ -84,7 +86,7 @@ func interceptor(
 	ctx context.Context,
 	log *logrus.Entry,
 	txOption func(methodName string) pbbase.TxOption,
-	ormInstance *ORM,
+	ormInstance *orm.ORM,
 	fullMethod string,
 	handler func(ctx context.Context) (interface{}, error)) (interface{}, error) {
 	log = log.WithField("method", fullMethod)
@@ -104,7 +106,7 @@ func interceptor(
 func handleReadOnly(
 	ctx context.Context,
 	log *logrus.Entry,
-	ormInstance *ORM,
+	ormInstance *orm.ORM,
 	handler func(ctx context.Context) (interface{}, error)) (interface{}, error) {
 	options := &sql.TxOptions{ReadOnly: true}
 	tx := ormInstance.GetDB().BeginTx(context.Background(), options)
@@ -116,7 +118,7 @@ func handleReadOnly(
 func handleReadWrite(
 	ctx context.Context,
 	log *logrus.Entry,
-	ormInstance *ORM,
+	ormInstance *orm.ORM,
 	handler func(ctx context.Context) (interface{}, error)) (interface{}, error) {
 	tx := ormInstance.GetDB().Begin()
 	newCtx := SaveTx(ctx, tx)

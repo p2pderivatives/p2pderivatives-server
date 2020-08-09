@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"p2pderivatives-server/internal/authentication"
-	"p2pderivatives-server/internal/common/conf"
 	"p2pderivatives-server/internal/common/token"
 	"p2pderivatives-server/internal/user/usercommon"
 	"p2pderivatives-server/internal/user/usercontroller"
@@ -15,6 +14,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	conf "github.com/cryptogarageinc/server-common-go/pkg/configuration"
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"

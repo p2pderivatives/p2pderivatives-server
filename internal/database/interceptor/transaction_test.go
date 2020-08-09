@@ -1,11 +1,10 @@
-package orm_test
+package interceptor
 
 import (
 	"context"
 	"testing"
 
 	"p2pderivatives-server/internal/common/grpc/pbbase"
-	"p2pderivatives-server/internal/database/orm"
 	"p2pderivatives-server/test"
 
 	"github.com/jinzhu/gorm"
@@ -20,7 +19,7 @@ func TestTransactionInterceptorUnaryInterceptor_RWOption_HasTx(t *testing.T) {
 
 	// Act
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		retrievedTx = orm.ExtractTx(ctx)
+		retrievedTx = ExtractTx(ctx)
 		// TODO(tibo): would be nice to be able to check that it's RW.
 		return nil, nil
 	}
@@ -38,7 +37,7 @@ func TestTransactionInterceptorUnaryInterceptor_ReadOnlyTxOption_HasTx(t *testin
 
 	// Act
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		retrievedTx = orm.ExtractTx(ctx)
+		retrievedTx = ExtractTx(ctx)
 		// TODO(tibo): would be nice to be able to check that it's RW.
 		return nil, nil
 	}
@@ -55,7 +54,7 @@ func TestTransactionInterceptorUnaryInterceptor_NoTxOption_Panics(t *testing.T) 
 
 	// Act/Assert
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		assert.Panics(func() { orm.ExtractTx(ctx) })
+		assert.Panics(func() { ExtractTx(ctx) })
 		return nil, nil
 	}
 
@@ -69,7 +68,7 @@ func TestTransactionInterceptorStreamInterceptor_RWTxOption_HasTx(t *testing.T) 
 
 	// Act
 	handler := func(srv interface{}, stream grpc.ServerStream) error {
-		retrievedTx = orm.ExtractTx(stream.Context())
+		retrievedTx = ExtractTx(stream.Context())
 		return nil
 	}
 
@@ -86,7 +85,7 @@ func TestTransactionInterceptorStreamInterceptor_ReadOnlyTxOption_HasTx(t *testi
 
 	// Act
 	handler := func(srv interface{}, stream grpc.ServerStream) error {
-		retrievedTx = orm.ExtractTx(stream.Context())
+		retrievedTx = ExtractTx(stream.Context())
 		return nil
 	}
 
@@ -102,7 +101,7 @@ func TestTransactionInterceptorStreamInterceptor_NoTxOption_Panics(t *testing.T)
 
 	// Act/Assert
 	handler := func(srv interface{}, stream grpc.ServerStream) error {
-		assert.Panics(func() { orm.ExtractTx(stream.Context()) })
+		assert.Panics(func() { ExtractTx(stream.Context()) })
 		return nil
 	}
 
@@ -121,7 +120,7 @@ func unaryInterceptorTestHelper(
 	defer tx.Rollback()
 
 	// Act
-	orm.TransactionUnaryServerInterceptor(
+	TransactionUnaryServerInterceptor(
 		log.NewEntry(),
 		func(s string) pbbase.TxOption { return txOption },
 		ormInstance)(
@@ -144,7 +143,7 @@ func streamInterceptorTestHelper(
 	defer tx.Rollback()
 
 	// Act
-	orm.TransactionStreamServerInterceptor(
+	TransactionStreamServerInterceptor(
 		log.NewEntry(),
 		func(s string) pbbase.TxOption { return txOption },
 		ormInstance)(

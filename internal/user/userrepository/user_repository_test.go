@@ -3,9 +3,9 @@ package userrepository
 import (
 	context "context"
 	"fmt"
+	"p2pderivatives-server/internal/database/interceptor"
 	"testing"
 
-	"p2pderivatives-server/internal/database/orm"
 	"p2pderivatives-server/internal/user/usercommon"
 	"p2pderivatives-server/test"
 
@@ -17,7 +17,7 @@ import (
 func createContextRepoAndTx() (ctx context.Context, repo *Repository, tx *gorm.DB) {
 	ormInstance := test.InitializeORM(&usercommon.User{})
 	tx = ormInstance.GetDB().Begin()
-	ctx = orm.SaveTx(context.Background(), tx)
+	ctx = interceptor.SaveTx(context.Background(), tx)
 	repo = NewRepository()
 	return
 }

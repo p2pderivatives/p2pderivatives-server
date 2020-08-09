@@ -3,9 +3,10 @@ package authentication
 import (
 	"context"
 	"p2pderivatives-server/internal/common/contexts"
-	"p2pderivatives-server/internal/common/log"
 	"p2pderivatives-server/internal/common/servererror"
 	"p2pderivatives-server/internal/user/usercommon"
+
+	"github.com/cryptogarageinc/server-common-go/pkg/grpc/log"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus/ctxlogrus"
 	"github.com/sirupsen/logrus"
