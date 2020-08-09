@@ -2,7 +2,7 @@ package userrepository
 
 import (
 	context "context"
-	"p2pderivatives-server/internal/database/orm"
+	"p2pderivatives-server/internal/database/interceptor"
 	"p2pderivatives-server/internal/user/usercommon"
 
 	"github.com/jinzhu/gorm"
@@ -18,7 +18,7 @@ func NewRepository() *Repository {
 }
 
 func (repo *Repository) extractTx(ctx context.Context) *gorm.DB {
-	tx := orm.ExtractTx(ctx)
+	tx := interceptor.ExtractTx(ctx)
 	if tx == nil {
 		panic("Repository called without DB tx in context.")
 	}

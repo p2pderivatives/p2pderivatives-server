@@ -1,11 +1,12 @@
 package test
 
 import (
-	"p2pderivatives-server/internal/common/conf"
-	"p2pderivatives-server/internal/common/log"
-	"p2pderivatives-server/internal/database/orm"
 	"path/filepath"
 	"runtime"
+
+	conf "github.com/cryptogarageinc/server-common-go/pkg/configuration"
+	"github.com/cryptogarageinc/server-common-go/pkg/database/orm"
+	"github.com/cryptogarageinc/server-common-go/pkg/log"
 )
 
 // GetTestConfig returns a configuration for unit tests.

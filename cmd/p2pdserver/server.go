@@ -5,18 +5,20 @@ import (
 	stdlog "log"
 	"net"
 	"os"
+	"p2pderivatives-server/internal/database/interceptor"
 
 	"p2pderivatives-server/internal/authentication"
-	"p2pderivatives-server/internal/common/conf"
 	"p2pderivatives-server/internal/common/grpc/methods"
-	"p2pderivatives-server/internal/common/log"
 	"p2pderivatives-server/internal/common/servererror"
 	"p2pderivatives-server/internal/common/token"
-	"p2pderivatives-server/internal/database/orm"
 	"p2pderivatives-server/internal/user/usercommon"
 	"p2pderivatives-server/internal/user/usercontroller"
 	"p2pderivatives-server/internal/user/userrepository"
 	"p2pderivatives-server/internal/user/userservice"
+
+	conf "github.com/cryptogarageinc/server-common-go/pkg/configuration"
+	"github.com/cryptogarageinc/server-common-go/pkg/database/orm"
+	"github.com/cryptogarageinc/server-common-go/pkg/log"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_validator "github.com/grpc-ecosystem/go-grpc-middleware/validator"
@@ -132,14 +134,14 @@ func main() {
 
 	opts = append(opts, grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
 		token.UnaryInterceptor(),
-		orm.TransactionUnaryServerInterceptor(
+		interceptor.TransactionUnaryServerInterceptor(
 			logInstance.NewEntry(),
 			methods.TxOption,
 			ormInstance),
 		grpc_validator.UnaryServerInterceptor(),
 	)), grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
 		token.StreamInterceptor(),
-		orm.TransactionStreamServerInterceptor(
+		interceptor.TransactionStreamServerInterceptor(
 			logInstance.NewEntry(),
 			methods.TxOption,
 			ormInstance),
