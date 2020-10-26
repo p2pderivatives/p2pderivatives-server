@@ -42,7 +42,7 @@ jobs:
       - image: cimg/go:1.14
     steps:
       - checkout
-      - run: 
+      - run:
           name: Checkout submodules
           command: git submodule update --init --recursive
       - run:
@@ -146,7 +146,6 @@ jobs:
       - image: cimg/base:stable
     environment:
       DOCKER_HUB_URL: docker.pkg.github.com
-      CD_MACHINE_SSH: circleci@3.115.1.105
       CD_STACK_NAME: server-staging
       CD_SERVICE_ADDRESS: tcp://server.p2pderivatives.io:443
     steps:
@@ -161,8 +160,8 @@ jobs:
       - run:
           name: Setup remote docker context
           command: |
-            ssh -o StrictHostKeyChecking=no $CD_MACHINE_SSH '/bin/true' # (docker fails without a known host)
-            docker context create deploy --docker host=ssh://$CD_MACHINE_SSH
+            ssh -o StrictHostKeyChecking=no $CI_PROJECT_CD_MACHINE_SSH '/bin/true' # (docker fails without a known host)
+            docker context create deploy --docker host=ssh://$CI_PROJECT_CD_MACHINE_SSH
             docker context use deploy
             docker info
       - run:
