@@ -21,7 +21,7 @@ workflows:
     jobs:
       - packaging:
           <<: *tag_only
-          context: github-packages-docker-credentials
+          context: p2pderivatives-ci
       - hold:
           <<: *tag_only
           type: approval
@@ -117,8 +117,8 @@ jobs:
 
   packaging:
     environment:
-      DOCKER_HUB_URL: docker.pkg.github.com
-      IMAGE_REPOSITORY: p2pderivatives/p2pderivatives-server
+      DOCKER_HUB_URL: ghcr.io
+      IMAGE_REPOSITORY: p2pderivatives
       IMAGE_NAME: server
     docker:
       - image: cimg/base:stable
@@ -132,7 +132,7 @@ jobs:
       - run:
           name: Login to docker repository
           command: |
-            echo "$DOCKER_HUB_PASS" | docker login ${DOCKER_HUB_URL} -u "$DOCKER_HUB_USER" --password-stdin
+            echo "$PACKAGE_DEPLOY" | docker login ${DOCKER_HUB_URL} -u "$PACKAGE_DEPLOY_USER" --password-stdin
       - run:
           name: Build docker image
           command: |
