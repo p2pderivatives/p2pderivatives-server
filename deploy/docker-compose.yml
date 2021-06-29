@@ -3,7 +3,7 @@
 version: "3.5"
 services:
   server:
-    image: docker.pkg.github.com/p2pderivatives/p2pderivatives-server/server:${IMAGE_TAG:?}
+    image: ghcr.io/p2pderivatives/server:${IMAGE_TAG:?}
     labels:
       - image.version:${IMAGE_TAG:?}
       - "traefik.http.routers.server.tls=true"
