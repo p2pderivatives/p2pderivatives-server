@@ -19,8 +19,8 @@ func NewRepositoryMock() *RepositoryMock {
 }
 
 // CountUsers return the number of user matching the given condition.
-func (repo *RepositoryMock) CountUsers(ctx context.Context, condition interface{}) (int, error) {
-	return len(repo.storage), nil
+func (repo *RepositoryMock) CountUsers(ctx context.Context, condition interface{}) (int64, error) {
+	return int64(len(repo.storage)), nil
 }
 
 // CreateUser creates a new usercommon.

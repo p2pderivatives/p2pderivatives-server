@@ -7,11 +7,11 @@ import (
 
 	"github.com/cryptogarageinc/server-common-go/pkg/database/orm"
 
-	"github.com/jinzhu/gorm"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"gorm.io/gorm"
 )
 
 // ctxTxMarker is used to retrieve the DB transaction from the context.
@@ -109,7 +109,7 @@ func handleReadOnly(
 	ormInstance *orm.ORM,
 	handler func(ctx context.Context) (interface{}, error)) (interface{}, error) {
 	options := &sql.TxOptions{ReadOnly: true}
-	tx := ormInstance.GetDB().BeginTx(context.Background(), options)
+	tx := ormInstance.GetDB().Begin(options)
 	res, err := handler(SaveTx(ctx, tx))
 	tx.Rollback()
 	return res, err

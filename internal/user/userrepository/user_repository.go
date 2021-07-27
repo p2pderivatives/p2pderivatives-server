@@ -5,7 +5,7 @@ import (
 	"p2pderivatives-server/internal/database/interceptor"
 	"p2pderivatives-server/internal/user/usercommon"
 
-	"github.com/jinzhu/gorm"
+	"gorm.io/gorm"
 )
 
 // Repository represents a repository to store User related data.
@@ -110,7 +110,7 @@ func (repo *Repository) GetAllUsers(ctx context.Context) (users []usercommon.Use
 
 // CountUsers returns the number of Users matching specified condition
 func (repo *Repository) CountUsers(ctx context.Context, condition interface{}) (
-	count int, err error) {
+	count int64, err error) {
 	tx := repo.extractTx(ctx)
 	var users []usercommon.User
 	err = tx.Where(condition).Find(&users).Count(&count).Error

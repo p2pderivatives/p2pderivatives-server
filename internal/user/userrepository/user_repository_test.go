@@ -9,8 +9,8 @@ import (
 	"p2pderivatives-server/internal/user/usercommon"
 	"p2pderivatives-server/test"
 
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
 // createTxAndUserRepo creates a new DB transaction and user repository.
@@ -73,7 +73,7 @@ func TestAddressRepository_CountUsers(t *testing.T) {
 	condition := usercommon.User{}
 	result, _ := repo.CountUsers(ctx, condition)
 
-	assert.Equal(t, result, 3)
+	assert.Equal(t, result, int64(3))
 }
 
 func TestRepository_CreateUser(t *testing.T) {
@@ -181,16 +181,18 @@ func TestRepository_CreateUsers(t *testing.T) {
 
 	insertTargets := append(make([]*usercommon.User, 0), exchange1, exchange2)
 
-	_ = repo.CreateUsers(ctx, insertTargets)
-	foundResults, _ := repo.FindUsers(ctx, condition, 0, 100, []string{"account"})
+	err := repo.CreateUsers(ctx, insertTargets)
+	assert.NoError(t, err)
+	foundResults, err := repo.FindUsers(ctx, condition, 0, 100, []string{"name"})
+	assert.NoError(t, err)
 
 	assert.Equal(t, len(foundResults), 2)
 	assert.NotNil(t, foundResults[0].ID)
-	assert.Equal(t, foundResults[0].Name, "hoge_taro")
+	assert.Equal(t, foundResults[0].Name, "hoge_jiro")
 	assert.NotNil(t, foundResults[0].Password)
 
 	assert.NotNil(t, foundResults[1].ID)
-	assert.Equal(t, foundResults[1].Name, "hoge_jiro")
+	assert.Equal(t, foundResults[1].Name, "hoge_taro")
 	assert.NotNil(t, foundResults[1].Password)
 }
 
@@ -206,15 +208,15 @@ func TestRepository_UpdateUsers(t *testing.T) {
 	_ = repo.CreateUsers(ctx, insertTargets)
 
 	condition := usercommon.User{}
-	orgResults, _ := repo.FindUsers(ctx, condition, 0, 100, []string{"account"})
+	orgResults, _ := repo.FindUsers(ctx, condition, 0, 100, []string{"name"})
 
 	assert.Equal(t, len(orgResults), 2)
 	assert.NotNil(t, orgResults[0].ID)
-	assert.Equal(t, orgResults[0].Name, "hoge_taro")
+	assert.Equal(t, orgResults[0].Name, "hoge_jiro")
 	assert.NotNil(t, orgResults[0].Password)
 
 	assert.NotNil(t, orgResults[1].ID)
-	assert.Equal(t, orgResults[1].Name, "hoge_jiro")
+	assert.Equal(t, orgResults[1].Name, "hoge_taro")
 	assert.NotNil(t, orgResults[1].Password)
 
 	user1.Name = "piyo_taro"
@@ -232,15 +234,15 @@ func TestRepository_UpdateUsers(t *testing.T) {
 
 	assert.Equal(t, len(updateResults2), 0)
 
-	updateResults3, _ := repo.FindUsers(ctx, condition, 0, 100, []string{"account"})
+	updateResults3, _ := repo.FindUsers(ctx, condition, 0, 100, []string{"name"})
 
 	assert.Equal(t, len(updateResults3), 2)
 	assert.NotNil(t, updateResults3[0].ID)
-	assert.Equal(t, updateResults3[0].Name, "piyo_taro")
+	assert.Equal(t, updateResults3[0].Name, "piyo_jiro")
 	assert.NotNil(t, updateResults3[0].Password)
 
 	assert.NotNil(t, updateResults3[1].ID)
-	assert.Equal(t, updateResults3[1].Name, "piyo_jiro")
+	assert.Equal(t, updateResults3[1].Name, "piyo_taro")
 	assert.NotNil(t, updateResults3[1].Password)
 }
 
@@ -256,15 +258,15 @@ func TestRepository_DeleteUsers(t *testing.T) {
 	_ = repo.CreateUsers(ctx, insertTargets)
 
 	condition := usercommon.User{}
-	orgResults, _ := repo.FindUsers(ctx, condition, 0, 100, []string{"account"})
+	orgResults, _ := repo.FindUsers(ctx, condition, 0, 100, []string{"name"})
 
 	assert.Equal(t, len(orgResults), 2)
 	assert.NotNil(t, orgResults[0].ID)
-	assert.Equal(t, orgResults[0].Name, "hoge_taro")
+	assert.Equal(t, orgResults[0].Name, "hoge_jiro")
 	assert.NotNil(t, orgResults[0].Password)
 
 	assert.NotNil(t, orgResults[1].ID)
-	assert.Equal(t, orgResults[1].Name, "hoge_jiro")
+	assert.Equal(t, orgResults[1].Name, "hoge_taro")
 	assert.NotNil(t, orgResults[1].Password)
 
 	_ = repo.DeleteUsers(ctx, insertTargets)

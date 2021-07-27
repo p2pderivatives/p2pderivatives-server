@@ -1,4 +1,4 @@
-FROM golang:1.14-alpine as dev
+FROM golang:1.16-alpine as dev
 RUN apk update
 RUN apk add make gcc libc-dev git wget unzip protobuf-dev openssl
 
