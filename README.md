@@ -4,7 +4,7 @@
 Repository for the P2PDerivatives server
 
 ## Requirements
-Confirmed working with Go v1.12.7.
+Confirmed working with Go v1.16.6.
 To install protoc, use the script in `scripts/install_protoc.sh`.
 
 ## Getting started
@@ -15,7 +15,7 @@ Alternatively, run `git submodule update --init --recursive` within the reposito
 
 Run `make setup` to setup the repository.
 You will need to setup a `postgresql` database connection in the configuration file (or via environment variables).  
-You can easily setup a running database using `docker-compose up db`  
+You can easily setup a running database using `make gen-ssl-certs` to generate the db certificates and then `docker-compose up db`.
 Once that is done, the server can be run locally using `make run-local-server`.
 A cli client tool can be used to interact with the server.
 Build it using `make client`.
@@ -26,6 +26,7 @@ Then run `./bin/p2pdclient` to see the list of available commands.
 ### Docker Compose
 You can easily start and build the docker environment using `docker-compose`  
 To build from scratch the server use: `docker-compose up --build`
+Note that you will need to run `make gen-ssl-certs` to generate a certificate for the database.
  
 ### Building the image
 

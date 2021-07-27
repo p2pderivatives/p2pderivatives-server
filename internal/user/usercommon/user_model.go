@@ -15,8 +15,8 @@ type User struct {
 type Condition struct {
 	ID             string
 	Name           string
-	Offset         int64
-	Limit          int64
+	Offset         int
+	Limit          int
 	SortConditions []string
 	IDs            []string
 }

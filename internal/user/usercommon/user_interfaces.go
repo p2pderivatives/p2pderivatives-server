@@ -27,7 +27,7 @@ type RepositoryIf interface {
 	FindUsers(ctx context.Context, condition interface{}, offset int, limit int, orders []string) (result []User, err error)
 	FindUserByCondition(ctx context.Context, condition *Condition) (result []User, err error)
 	GetAllUsers(ctx context.Context) ([]User, error)
-	CountUsers(ctx context.Context, condition interface{}) (count int, err error)
+	CountUsers(ctx context.Context, condition interface{}) (count int64, err error)
 	CreateUser(ctx context.Context, user *User) error
 	UpdateUser(ctx context.Context, user *User) error
 	DeleteUser(ctx context.Context, user *User) error

@@ -7,9 +7,9 @@ import (
 	"p2pderivatives-server/internal/common/grpc/pbbase"
 	"p2pderivatives-server/test"
 
-	"github.com/jinzhu/gorm"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
+	"gorm.io/gorm"
 )
 
 func TestTransactionInterceptorUnaryInterceptor_RWOption_HasTx(t *testing.T) {
